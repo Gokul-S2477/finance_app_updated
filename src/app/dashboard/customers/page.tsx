@@ -39,52 +39,54 @@ export default function CustomersPage() {
     const loanAmt = parseFloat(form.loanAmount || "0");
 
     return (
-        <div className="animate-fade-in">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", gap: "1rem", flexWrap: "wrap" }}>
-                <h1>Customers</h1>
-                <button className="btn btn-primary" onClick={() => setIsSheetOpen(true)}>
-                    <Plus size={18} /> <span className="hide-on-mobile">Add Customer</span><span className="show-on-mobile">Add</span>
-                </button>
-            </div>
+        <>
+            <div className="animate-fade-in">
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", gap: "1rem", flexWrap: "wrap" }}>
+                    <h1>Customers</h1>
+                    <button className="btn btn-primary" onClick={() => setIsSheetOpen(true)}>
+                        <Plus size={18} /> <span className="hide-on-mobile">Add Customer</span><span className="show-on-mobile">Add</span>
+                    </button>
+                </div>
 
-            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", background: "var(--input)", border: "1px solid var(--border)", borderRadius: "12px", padding: "0.6rem 1rem", marginBottom: "1.5rem" }}>
-                <Search size={18} style={{ opacity: 0.4, flexShrink: 0 }} />
-                <input type="text" placeholder="Search by ID or Name…" value={search} onChange={e => setSearch(e.target.value)}
-                    style={{ border: "none", background: "none", outline: "none", color: "white", width: "100%", fontSize: "0.95rem" }} />
-            </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", background: "var(--input)", border: "1px solid var(--border)", borderRadius: "12px", padding: "0.6rem 1rem", marginBottom: "1.5rem" }}>
+                    <Search size={18} style={{ opacity: 0.4, flexShrink: 0 }} />
+                    <input type="text" placeholder="Search by ID or Name…" value={search} onChange={e => setSearch(e.target.value)}
+                        style={{ border: "none", background: "none", outline: "none", color: "white", width: "100%", fontSize: "0.95rem" }} />
+                </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-                {loading ? (
-                    <div style={{ textAlign: "center", padding: "3rem", opacity: 0.5 }}>Connecting…</div>
-                ) : customersList.length === 0 ? (
-                    <div className="card" style={{ textAlign: "center", padding: "3rem", opacity: 0.5 }}>
-                        <User size={40} style={{ margin: "0 auto 1rem", opacity: 0.2 }} />
-                        <p>No customers found.</p>
-                    </div>
-                ) : customersList.map((c: any) => (
-                    <div key={c.id} className="card" style={{ cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem" }}
-                        onClick={() => window.location.href = `/dashboard/customers/${c.id}`}>
-                        <div style={{ display: "flex", gap: "1rem", alignItems: "center", minWidth: 0 }}>
-                            <div style={{ width: "40px", height: "40px", borderRadius: "12px", background: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                                <User size={20} />
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                    {loading ? (
+                        <div style={{ textAlign: "center", padding: "3rem", opacity: 0.5 }}>Connecting…</div>
+                    ) : customersList.length === 0 ? (
+                        <div className="card" style={{ textAlign: "center", padding: "3rem", opacity: 0.5 }}>
+                            <User size={40} style={{ margin: "0 auto 1rem", opacity: 0.2 }} />
+                            <p>No customers found.</p>
+                        </div>
+                    ) : customersList.map((c: any) => (
+                        <div key={c.id} className="card" style={{ cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem" }}
+                            onClick={() => window.location.href = `/dashboard/customers/${c.id}`}>
+                            <div style={{ display: "flex", gap: "1rem", alignItems: "center", minWidth: 0 }}>
+                                <div style={{ width: "40px", height: "40px", borderRadius: "12px", background: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                    <User size={20} />
+                                </div>
+                                <div style={{ minWidth: 0 }}>
+                                    <h3 style={{ fontSize: "1rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.name}</h3>
+                                    <p style={{ fontSize: "0.75rem", opacity: 0.5 }}>{c.own_id || `#${c.id}`}</p>
+                                </div>
                             </div>
-                            <div style={{ minWidth: 0 }}>
-                                <h3 style={{ fontSize: "1rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.name}</h3>
-                                <p style={{ fontSize: "0.75rem", opacity: 0.5 }}>{c.own_id || `#${c.id}`}</p>
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexShrink: 0 }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                                    {c.status ? <CheckCircle2 color="var(--success)" size={16} /> : <XCircle color="var(--error)" size={16} />}
+                                    <span style={{ fontSize: "0.8rem", fontWeight: 500 }} className="hide-on-small">{c.status ? "Active" : "Inactive"}</span>
+                                </div>
+                                <ArrowRight size={16} style={{ opacity: 0.2 }} />
                             </div>
                         </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexShrink: 0 }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                                {c.status ? <CheckCircle2 color="var(--success)" size={16} /> : <XCircle color="var(--error)" size={16} />}
-                                <span style={{ fontSize: "0.8rem", fontWeight: 500 }} className="hide-on-small">{c.status ? "Active" : "Inactive"}</span>
-                            </div>
-                            <ArrowRight size={16} style={{ opacity: 0.2 }} />
-                        </div>
-                    </div>
-                ))}
+                    ))}
+                </div>
             </div>
 
-            {/* ── ADD CUSTOMER SIDE SHEET ── */}
+            {/* ── ADD CUSTOMER SIDE SHEET (Outside animated div to fix fixed-positioning) ── */}
             <div className={`sheet-overlay ${isSheetOpen ? "open" : ""}`} onClick={e => e.target === e.currentTarget && setIsSheetOpen(false)}>
                 <div className="sheet-content">
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
@@ -182,6 +184,6 @@ export default function CustomersPage() {
           .show-on-mobile { display: none; }
         }
       `}</style>
-        </div>
+        </>
     );
 }
