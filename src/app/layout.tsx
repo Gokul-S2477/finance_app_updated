@@ -1,19 +1,38 @@
-import type { Metadata } from "next";
-import "../styles/globals.css";
+import type { Metadata, Viewport } from "next";
+import "@/styles/globals.css";
 
 export const metadata: Metadata = {
     title: "Ganapathi Finance",
-    description: "Daily Collection & Loan Management",
+    description: "High Performance Finance Management",
+    manifest: "/manifest.json",
+    appleWebApp: {
+        capable: true,
+        statusBarStyle: "black-translucent",
+        title: "Ganapathi",
+    },
+};
+
+export const viewport: Viewport = {
+    themeColor: "#070b14",
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
 };
 
 export default function RootLayout({
     children,
-}: Readonly<{
+}: {
     children: React.ReactNode;
-}>) {
+}) {
     return (
         <html lang="en">
-            <body>{children}</body>
+            <head>
+                <link rel="icon" href="/icon.png" />
+            </head>
+            <body>
+                {children}
+            </body>
         </html>
     );
 }
