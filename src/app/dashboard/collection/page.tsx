@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Calendar as CalendarIcon, CheckCircle2, Circle, ChevronRight } from "lucide-react";
+import { Search, Calendar as CalendarIcon, CheckCircle2, Circle, ChevronRight, Edit2 } from "lucide-react";
 import { getCollectionStatus, recordCollection } from "@/db/actions";
 import { format } from "date-fns";
 
@@ -12,6 +12,9 @@ export default function CollectionPage() {
     const [loading, setLoading] = useState(true);
     const [amounts, setAmounts] = useState<Record<number, string>>({});
     const [saving, setSaving] = useState<number | null>(null);
+
+    // Track which items are being "edited" after processing
+    const [editingIds, setEditingIds] = useState<Set<number>>(new Set());
 
     useEffect(() => { fetchStatus(); }, [date, search]);
 
@@ -29,7 +32,20 @@ export default function CollectionPage() {
         await recordCollection(loanId, date, amount);
         setSaving(null);
         setAmounts(prev => { const n = { ...prev }; delete n[loanId]; return n; });
+
+        // Clear editing state if this was an update
+        const newEditing = new Set(editingIds);
+        newEditing.delete(loanId);
+        setEditingIds(newEditing);
+
         fetchStatus();
+    };
+
+    const startEdit = (loanId: number, currentAmount: string) => {
+        const newEditing = new Set(editingIds);
+        newEditing.add(loanId);
+        setEditingIds(newEditing);
+        setAmounts(prev => ({ ...prev, [loanId]: currentAmount }));
     };
 
     return (
@@ -65,65 +81,78 @@ export default function CollectionPage() {
                     <div className="card" style={{ textAlign: "center", padding: "3rem", opacity: 0.5 }}>
                         <p>No active loans found for this date.</p>
                     </div>
-                ) : customers.map((item: any) => (
-                    <div
-                        key={item.loanId}
-                        className="card"
-                        style={{
-                            padding: "0.85rem 1.1rem",
-                            borderLeft: `4px solid ${item.isProcessed ? "var(--success)" : "var(--primary)"}`,
-                            opacity: item.isProcessed ? 0.65 : 1,
-                            transition: "opacity 0.2s",
-                        }}
-                    >
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
-                            {/* Name & ID */}
-                            <div style={{ flex: 1, minWidth: "120px" }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                                    {item.isProcessed
-                                        ? <CheckCircle2 size={15} color="var(--success)" />
-                                        : <Circle size={15} style={{ opacity: 0.3 }} />
-                                    }
-                                    <span style={{ fontWeight: 600, fontSize: "0.95rem" }}>{item.name}</span>
-                                </div>
-                                <p style={{ fontSize: "0.72rem", opacity: 0.45, marginTop: "2px", paddingLeft: "21px" }}>
-                                    {item.ownId || `#${item.customerId}`}
-                                </p>
-                            </div>
+                ) : customers.map((item: any) => {
+                    const isActuallyProcessed = item.isProcessed && !editingIds.has(item.loanId);
 
-                            {/* Due amount + input + confirm */}
-                            {item.isProcessed ? (
-                                <div style={{ textAlign: "right", flexShrink: 0 }}>
-                                    <p style={{ fontSize: "0.7rem", opacity: 0.5 }}>Collected</p>
-                                    <p style={{ fontWeight: 700, color: "var(--success)", fontSize: "1rem" }}>₹{parseFloat(item.collectedAmount).toLocaleString()}</p>
-                                </div>
-                            ) : (
-                                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexShrink: 0 }}>
-                                    <div style={{ textAlign: "right", marginRight: "0.25rem" }}>
-                                        <p style={{ fontSize: "0.65rem", opacity: 0.5 }}>Due</p>
-                                        <p style={{ fontWeight: 600, fontSize: "0.9rem" }}>₹{parseFloat(item.amountToCollect).toLocaleString()}</p>
+                    return (
+                        <div
+                            key={item.loanId}
+                            className="card"
+                            style={{
+                                padding: "0.85rem 1.1rem",
+                                borderLeft: `4px solid ${isActuallyProcessed ? "var(--success)" : "var(--primary)"}`,
+                                opacity: isActuallyProcessed ? 0.65 : 1,
+                                transition: "opacity 0.2s",
+                            }}
+                        >
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+                                {/* Name & ID */}
+                                <div style={{ flex: 1, minWidth: "120px" }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                                        {isActuallyProcessed
+                                            ? <CheckCircle2 size={15} color="var(--success)" />
+                                            : <Circle size={15} style={{ opacity: 0.3 }} />
+                                        }
+                                        <span style={{ fontWeight: 600, fontSize: "0.95rem" }}>{item.name}</span>
                                     </div>
-                                    <input
-                                        type="number" inputMode="numeric"
-                                        className="input"
-                                        placeholder={item.amountToCollect}
-                                        value={amounts[item.loanId] || ""}
-                                        onChange={e => setAmounts(prev => ({ ...prev, [item.loanId]: e.target.value }))}
-                                        style={{ width: "90px", padding: "0.5rem 0.6rem", textAlign: "center" }}
-                                    />
-                                    <button
-                                        className="btn btn-primary"
-                                        style={{ padding: "0.5rem 0.6rem", flexShrink: 0 }}
-                                        disabled={saving === item.loanId}
-                                        onClick={() => handleEntry(item.loanId, item.amountToCollect)}
-                                    >
-                                        {saving === item.loanId ? "…" : <ChevronRight size={18} />}
-                                    </button>
+                                    <p style={{ fontSize: "0.72rem", opacity: 0.45, marginTop: "2px", paddingLeft: "21px" }}>
+                                        {item.ownId || `#${item.cust_id}`}
+                                    </p>
                                 </div>
-                            )}
+
+                                {/* Due amount + input + confirm */}
+                                {isActuallyProcessed ? (
+                                    <div style={{ display: "flex", alignItems: "center", gap: "1rem", flexShrink: 0 }}>
+                                        <div style={{ textAlign: "right" }}>
+                                            <p style={{ fontSize: "0.7rem", opacity: 0.5 }}>Collected</p>
+                                            <p style={{ fontWeight: 700, color: "var(--success)", fontSize: "1rem" }}>₹{parseFloat(item.collectedAmount).toLocaleString()}</p>
+                                        </div>
+                                        <button
+                                            className="btn"
+                                            onClick={() => startEdit(item.loanId, item.collectedAmount)}
+                                            style={{ background: "var(--glass-bg)", padding: "0.4rem", color: "white", borderRadius: "8px" }}
+                                        >
+                                            <Edit2 size={14} style={{ opacity: 0.6 }} />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexShrink: 0 }}>
+                                        <div style={{ textAlign: "right", marginRight: "0.25rem" }}>
+                                            <p style={{ fontSize: "0.65rem", opacity: 0.5 }}>Due</p>
+                                            <p style={{ fontWeight: 600, fontSize: "0.9rem" }}>₹{parseFloat(item.amountToCollect).toLocaleString()}</p>
+                                        </div>
+                                        <input
+                                            type="number" inputMode="numeric"
+                                            className="input"
+                                            placeholder={item.amountToCollect}
+                                            value={amounts[item.loanId] || ""}
+                                            onChange={e => setAmounts(prev => ({ ...prev, [item.loanId]: e.target.value }))}
+                                            style={{ width: "90px", padding: "0.5rem 0.6rem", textAlign: "center" }}
+                                        />
+                                        <button
+                                            className="btn btn-primary"
+                                            style={{ padding: "0.5rem 0.6rem", flexShrink: 0 }}
+                                            disabled={saving === item.loanId}
+                                            onClick={() => handleEntry(item.loanId, item.amountToCollect)}
+                                        >
+                                            {saving === item.loanId ? "…" : <ChevronRight size={18} />}
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
         </div>
     );

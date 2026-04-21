@@ -167,8 +167,11 @@ export async function recordCollection(loanId: number, dateStr: string, amount: 
   return await sql`
     INSERT INTO collections (loan_id, payment_date, amount_collected, status)
     VALUES (${loanId}, ${dateStr}, ${amount}, 'paid')
+    ON CONFLICT (loan_id, payment_date) 
+    DO UPDATE SET amount_collected = EXCLUDED.amount_collected, created_at = NOW()
   `;
 }
+
 
 export async function closeLoan(loanId: number) {
   return await sql`UPDATE loans SET status = 'closed' WHERE id = ${loanId}`;

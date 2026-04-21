@@ -23,10 +23,6 @@ export async function GET() {
       );
     `;
 
-    // Add columns if they don't exist (in case of re-run)
-    try { await sql`ALTER TABLE customers ADD COLUMN is_deleted BOOLEAN DEFAULT FALSE;`; } catch (e) { }
-    try { await sql`ALTER TABLE customers ADD COLUMN deleted_at TIMESTAMP;`; } catch (e) { }
-
     // 2. Loans Table
     await sql`
       CREATE TABLE IF NOT EXISTS loans (
@@ -54,7 +50,14 @@ export async function GET() {
       );
     `;
 
-    return NextResponse.json({ ok: true, message: "Database initialized/updated!" });
+    // ADD UNIQUE CONSTRAINT for upserts (loan_id + payment_date)
+    try {
+      await sql`ALTER TABLE collections ADD CONSTRAINT unique_loan_date UNIQUE (loan_id, payment_date);`;
+    } catch (e) {
+      console.log("Constraint might already exist");
+    }
+
+    return NextResponse.json({ ok: true, message: "Database initialized/updated with unique constraint!" });
   } catch (err: any) {
     return NextResponse.json({ ok: false, error: err.message }, { status: 500 });
   }
