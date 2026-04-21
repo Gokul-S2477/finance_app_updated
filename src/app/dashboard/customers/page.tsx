@@ -40,48 +40,45 @@ export default function CustomersPage() {
 
     return (
         <div className="animate-fade-in">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", gap: "1rem", flexWrap: "wrap" }}>
                 <h1>Customers</h1>
                 <button className="btn btn-primary" onClick={() => setIsSheetOpen(true)}>
-                    <Plus size={18} /> Add Customer
+                    <Plus size={18} /> <span className="hide-on-mobile">Add Customer</span><span className="show-on-mobile">Add</span>
                 </button>
             </div>
 
-            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", background: "var(--input)", border: "1px solid var(--border)", borderRadius: "12px", padding: "0.6rem 1rem", marginBottom: "2rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", background: "var(--input)", border: "1px solid var(--border)", borderRadius: "12px", padding: "0.6rem 1rem", marginBottom: "1.5rem" }}>
                 <Search size={18} style={{ opacity: 0.4, flexShrink: 0 }} />
                 <input type="text" placeholder="Search by ID or Name…" value={search} onChange={e => setSearch(e.target.value)}
                     style={{ border: "none", background: "none", outline: "none", color: "white", width: "100%", fontSize: "0.95rem" }} />
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
                 {loading ? (
-                    <div style={{ textAlign: "center", padding: "3rem", opacity: 0.5 }}>Connecting to database…</div>
+                    <div style={{ textAlign: "center", padding: "3rem", opacity: 0.5 }}>Connecting…</div>
                 ) : customersList.length === 0 ? (
-                    <div className="card" style={{ textAlign: "center", padding: "4rem", opacity: 0.5 }}>
-                        <User size={48} style={{ margin: "0 auto 1.5rem", opacity: 0.2 }} />
-                        <p>No customers found. Start by adding one!</p>
+                    <div className="card" style={{ textAlign: "center", padding: "3rem", opacity: 0.5 }}>
+                        <User size={40} style={{ margin: "0 auto 1rem", opacity: 0.2 }} />
+                        <p>No customers found.</p>
                     </div>
                 ) : customersList.map((c: any) => (
-                    <div key={c.id} className="card" style={{ cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1.25rem" }}
+                    <div key={c.id} className="card" style={{ cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem" }}
                         onClick={() => window.location.href = `/dashboard/customers/${c.id}`}>
-                        <div style={{ display: "flex", gap: "1.25rem", alignItems: "center" }}>
-                            <div style={{ width: "48px", height: "48px", borderRadius: "14px", background: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                <User size={24} />
+                        <div style={{ display: "flex", gap: "1rem", alignItems: "center", minWidth: 0 }}>
+                            <div style={{ width: "40px", height: "40px", borderRadius: "12px", background: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                <User size={20} />
                             </div>
-                            <div>
-                                <h3 style={{ fontSize: "1.1rem" }}>{c.name}</h3>
-                                <p style={{ fontSize: "0.8rem", opacity: 0.5, marginTop: "2px" }}>ID: {c.own_id || c.id}</p>
+                            <div style={{ minWidth: 0 }}>
+                                <h3 style={{ fontSize: "1rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.name}</h3>
+                                <p style={{ fontSize: "0.75rem", opacity: 0.5 }}>{c.own_id || `#${c.id}`}</p>
                             </div>
                         </div>
-                        <div style={{ textAlign: "right", display: "flex", alignItems: "center", gap: "1.5rem" }}>
-                            <div style={{ display: "none" }} className="desktop-only text-right">
-                                <p style={{ fontSize: "0.85rem", opacity: 0.6 }}>{c.mobile_no}</p>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexShrink: 0 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                                {c.status ? <CheckCircle2 color="var(--success)" size={16} /> : <XCircle color="var(--error)" size={16} />}
+                                <span style={{ fontSize: "0.8rem", fontWeight: 500 }} className="hide-on-small">{c.status ? "Active" : "Inactive"}</span>
                             </div>
-                            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                                {c.status ? <CheckCircle2 color="var(--success)" size={18} /> : <XCircle color="var(--error)" size={18} />}
-                                <span style={{ fontSize: "0.9rem", fontWeight: 500 }}>{c.status ? "Active" : "Inactive"}</span>
-                            </div>
-                            <ArrowRight size={18} style={{ opacity: 0.2 }} />
+                            <ArrowRight size={16} style={{ opacity: 0.2 }} />
                         </div>
                     </div>
                 ))}
@@ -90,56 +87,50 @@ export default function CustomersPage() {
             {/* ── ADD CUSTOMER SIDE SHEET ── */}
             <div className={`sheet-overlay ${isSheetOpen ? "open" : ""}`} onClick={e => e.target === e.currentTarget && setIsSheetOpen(false)}>
                 <div className="sheet-content">
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2.5rem" }}>
-                        <div>
-                            <h2 style={{ fontSize: "1.5rem" }}>Add New Customer</h2>
-                            <p style={{ fontSize: "0.85rem", opacity: 0.5, marginTop: "4px" }}>Fill in the details to create a new loan</p>
-                        </div>
-                        <button onClick={() => setIsSheetOpen(false)}
-                            style={{ background: "var(--input)", border: "none", color: "white", padding: "0.5rem", borderRadius: "10px", cursor: "pointer" }}>
-                            <XCircle size={24} />
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+                        <h2 style={{ fontSize: "1.25rem" }}>Add Customer</h2>
+                        <button onClick={() => setIsSheetOpen(false)} style={{ background: "none", border: "none", color: "white", cursor: "pointer" }}>
+                            <XCircle size={24} style={{ opacity: 0.5 }} />
                         </button>
                     </div>
 
-                    <form onSubmit={handleAddCustomer} style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+                    <form onSubmit={handleAddCustomer} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
                         <div>
                             <label>FULL NAME *</label>
-                            <input type="text" className="input" required value={form.name} onChange={e => updateField("name", e.target.value)} placeholder="e.g. Rahul Kumar" />
+                            <input type="text" className="input" required value={form.name} onChange={e => updateField("name", e.target.value)} placeholder="Enter name" />
                         </div>
 
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr", gap: "1rem" }}>
+                        <div className="responsive-grid cols-2">
                             <div>
                                 <label>OWN ID (OPTIONAL)</label>
                                 <input type="text" className="input" value={form.ownId} onChange={e => updateField("ownId", e.target.value)} placeholder="ID" />
                             </div>
                             <div>
                                 <label>MOBILE NUMBER *</label>
-                                <input type="tel" className="input" required value={form.mobile} onChange={e => updateField("mobile", e.target.value)} placeholder="10-digit mobile" />
+                                <input type="tel" className="input" required value={form.mobile} onChange={e => updateField("mobile", e.target.value)} placeholder="10-digit number" />
                             </div>
                         </div>
 
                         <div>
                             <label>FULL ADDRESS *</label>
-                            <textarea className="input" required value={form.address} onChange={e => updateField("address", e.target.value)} placeholder="Complete home/work address" rows={3} style={{ resize: "none" }} />
+                            <textarea className="input" required value={form.address} onChange={e => updateField("address", e.target.value)} placeholder="Complete address" rows={2} style={{ resize: "none" }} />
                         </div>
 
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                        <div className="responsive-grid cols-2">
                             <div>
-                                <label>ID PROOF TYPE *</label>
+                                <label>ID PROOF *</label>
                                 <select className="input" value={form.idProof} onChange={e => updateField("idProof", e.target.value)}>
-                                    <option value="Aadhar">Aadhar Card</option>
-                                    <option value="PAN">PAN Card</option>
-                                    <option value="VoterID">Voter ID</option>
-                                    <option value="DrivingLicense">Driving License</option>
+                                    <option value="Aadhar">Aadhar</option>
+                                    <option value="PAN">PAN</option>
                                 </select>
                             </div>
                             <div>
                                 <label>ID NUMBER *</label>
-                                <input type="text" className="input" required value={form.idNumber} onChange={e => updateField("idNumber", e.target.value)} placeholder="Enter ID digits" />
+                                <input type="text" className="input" required value={form.idNumber} onChange={e => updateField("idNumber", e.target.value)} placeholder="ID number" />
                             </div>
                         </div>
 
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                        <div className="responsive-grid cols-2">
                             <div>
                                 <label>DATE OF BIRTH *</label>
                                 <input type="date" className="input" required value={form.dob} onChange={e => updateField("dob", e.target.value)} />
@@ -150,37 +141,31 @@ export default function CustomersPage() {
                             </div>
                         </div>
 
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                        <div className="responsive-grid cols-2">
                             <div>
                                 <label>START DATE *</label>
                                 <input type="date" className="input" required value={form.startDate} onChange={e => updateField("startDate", e.target.value)} />
                             </div>
                             <div>
-                                <label>END DATE (100 DAYS)</label>
+                                <label>END DATE</label>
                                 <input type="text" className="input" disabled value={endDate} />
                             </div>
                         </div>
 
-                        {loanAmt > 0 && (
-                            <div style={{ background: "var(--input)", borderRadius: "12px", padding: "1.25rem", border: "1px solid var(--border)" }}>
-                                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-                                    <span style={{ fontSize: "0.85rem", opacity: 0.5 }}>Starting Loan:</span>
-                                    <span style={{ fontWeight: 600 }}>₹{loanAmt.toLocaleString()}</span>
-                                </div>
-                                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-                                    <span style={{ fontSize: "0.85rem", opacity: 0.5 }}>Given (Cash In Hand):</span>
-                                    <span style={{ fontWeight: 700, color: "var(--warning)" }}>₹{(loanAmt * 0.88).toLocaleString()}</span>
-                                </div>
-                                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                                    <span style={{ fontSize: "0.85rem", opacity: 0.5 }}>Expected Profit:</span>
-                                    <span style={{ fontWeight: 700, color: "var(--success)" }}>₹{(loanAmt * 0.12).toLocaleString()}</span>
-                                </div>
+                        <div style={{ background: "var(--input)", borderRadius: "12px", padding: "1rem", border: "1px solid var(--border)" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                                <span style={{ fontSize: "0.8rem", opacity: 0.5 }}>Given (Cash In Hand):</span>
+                                <span style={{ fontWeight: 600, color: "var(--warning)" }}>₹{(loanAmt * 0.88).toLocaleString()}</span>
                             </div>
-                        )}
+                            <div style={{ display: "flex", justifyContent: "space-between" }}>
+                                <span style={{ fontSize: "0.8rem", opacity: 0.5 }}>Profit (12%):</span>
+                                <span style={{ fontWeight: 600, color: "var(--success)" }}>₹{(loanAmt * 0.12).toLocaleString()}</span>
+                            </div>
+                        </div>
 
-                        <div style={{ marginTop: "1rem", display: "flex", gap: "1rem", paddingBottom: "2rem" }}>
-                            <button type="submit" className="btn btn-primary" style={{ flex: 1, padding: "1rem" }} disabled={saving}>
-                                {saving ? "SAVING..." : "CREATE CUSTOMER ✓"}
+                        <div style={{ marginTop: "0.5rem" }}>
+                            <button type="submit" className="btn btn-primary" style={{ width: "100%", padding: "1rem" }} disabled={saving}>
+                                {saving ? "SAVING..." : "CREATE CUSTOMER"}
                             </button>
                         </div>
                     </form>
@@ -188,8 +173,13 @@ export default function CustomersPage() {
             </div>
 
             <style jsx>{`
-        @media (min-width: 1024px) {
-          .desktop-only { display: block !important; }
+        @media (max-width: 480px) {
+          .hide-on-mobile { display: none; }
+          .show-on-mobile { display: inline; }
+          .hide-on-small { display: none; }
+        }
+        @media (min-width: 481px) {
+          .show-on-mobile { display: none; }
         }
       `}</style>
         </div>

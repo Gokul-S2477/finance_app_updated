@@ -13,8 +13,6 @@ export default function CustomerDetailsPage() {
     const [loading, setLoading] = useState(true);
     const [newLoanAmount, setNewLoanAmount] = useState("10000");
     const [showNewLoan, setShowNewLoan] = useState(false);
-
-    // Edit Sheet State
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [editing, setEditing] = useState(false);
     const [editForm, setEditForm] = useState<any>(null);
@@ -40,25 +38,6 @@ export default function CustomerDetailsPage() {
         setLoading(false);
     };
 
-    const handleCloseAccount = async () => {
-        if (!confirm("Close this loan account? This cannot be undone.")) return;
-        await closeLoan(data.activeLoan.id);
-        fetchData();
-    };
-
-    const handleNewLoan = async () => {
-        await createNewLoanForCustomer(Number(id), newLoanAmount);
-        setShowNewLoan(false);
-        fetchData();
-    };
-
-    const handleDelete = async () => {
-        if (confirm("Are you sure you want to delete this customer? They will be moved to the archive.")) {
-            await deleteCustomer(Number(id));
-            router.push("/dashboard/customers");
-        }
-    };
-
     const handleUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
         setEditing(true);
@@ -68,13 +47,9 @@ export default function CustomerDetailsPage() {
         fetchData();
     };
 
-    if (loading || !data) return (
-        <div style={{ padding: "2rem", opacity: 0.5, textAlign: "center" }}>Loading customer details…</div>
-    );
+    if (loading || !data) return <div style={{ padding: "3rem", opacity: 0.5, textAlign: "center" }}>Loading Profile...</div>;
 
     const { customer, activeLoan, collections } = data;
-
-    // Calculate if loan amount is editable (within 2 days)
     let canEditLoanAmount = false;
     if (activeLoan) {
         const createdAt = new Date(activeLoan.created_at);
@@ -82,181 +57,109 @@ export default function CustomerDetailsPage() {
         canEditLoanAmount = diffDays <= 2;
     }
 
-    const historyDays = activeLoan ? eachDayOfInterval({
-        start: new Date(activeLoan.start_date),
-        end: new Date(),
-    }).reverse() : [];
-
-    const InfoRow = ({ icon: Icon, text }: { icon: any; text: string }) => (
-        <div style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem", fontSize: "0.9rem" }}>
-            <Icon size={16} style={{ opacity: 0.45, marginTop: "2px", flexShrink: 0 }} />
-            <span>{text}</span>
-        </div>
-    );
+    const historyDays = activeLoan ? eachDayOfInterval({ start: new Date(activeLoan.start_date), end: new Date() }).reverse() : [];
 
     return (
         <div className="animate-fade-in">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-                <button className="btn" onClick={() => router.back()} style={{ background: "none", color: "rgba(255,255,255,0.7)", paddingLeft: 0 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", gap: "1rem", flexWrap: "wrap" }}>
+                <button className="btn" onClick={() => router.back()} style={{ background: "none", color: "rgba(255,255,255,0.6)", paddingLeft: 0 }}>
                     <ArrowLeft size={18} /> Back
                 </button>
                 <div style={{ display: "flex", gap: "0.5rem" }}>
-                    <button className="btn" style={{ background: "var(--input)", color: "white" }} onClick={() => setIsEditOpen(true)}>
-                        <Edit size={16} /> Edit
-                    </button>
-                    <button className="btn" style={{ background: "rgba(239, 68, 68, 0.12)", color: "var(--error)" }} onClick={handleDelete}>
-                        <Trash2 size={16} /> Delete
-                    </button>
+                    <button className="btn" style={{ background: "var(--input)", color: "white" }} onClick={() => setIsEditOpen(true)}><Edit size={16} /> Edit</button>
+                    <button className="btn" style={{ background: "rgba(239, 68, 68, 0.1)", color: "var(--error)" }} onClick={async () => {
+                        if (confirm("Delete this customer?")) { await deleteCustomer(Number(id)); router.push("/dashboard/customers"); }
+                    }}><Trash2 size={16} /></button>
                 </div>
             </div>
 
-            {/* Top grid: customer info + loan */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
+            <div className="responsive-grid cols-2" style={{ marginBottom: "1.5rem" }}>
+                {/* Profile */}
                 <div className="card">
                     <div style={{ display: "flex", gap: "1rem", alignItems: "center", marginBottom: "1.25rem" }}>
-                        <div style={{ width: "52px", height: "52px", borderRadius: "14px", background: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                            <User size={26} />
+                        <div style={{ width: "48px", height: "48px", borderRadius: "14px", background: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            <User size={24} />
                         </div>
                         <div>
-                            <h2 style={{ fontSize: "1.2rem" }}>{customer.name}</h2>
-                            <p style={{ fontSize: "0.75rem", opacity: 0.45 }}>ID: {customer.own_id || customer.id}</p>
+                            <h2 style={{ fontSize: "1.1rem" }}>{customer.name}</h2>
+                            <p style={{ fontSize: "0.75rem", opacity: 0.5 }}>ID: {customer.own_id || customer.id}</p>
                         </div>
                     </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "0.7rem" }}>
-                        <InfoRow icon={Phone} text={customer.mobile_no} />
-                        <InfoRow icon={MapPin} text={customer.address} />
-                        <InfoRow icon={CreditCard} text={`${customer.id_proof}: ${customer.id_number}`} />
-                        <InfoRow icon={Calendar} text={`DOB: ${customer.dob ? format(new Date(customer.dob), "dd MMM yyyy") : "-"}`} />
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", fontSize: "0.9rem" }}>
+                        <div style={{ display: "flex", gap: "0.75rem" }}><Phone size={16} style={{ opacity: 0.4 }} /> {customer.mobile_no}</div>
+                        <div style={{ display: "flex", gap: "0.75rem" }}><MapPin size={16} style={{ opacity: 0.4 }} /> {customer.address}</div>
+                        <div style={{ display: "flex", gap: "0.75rem" }}><CreditCard size={16} style={{ opacity: 0.4 }} /> {customer.id_number} ({customer.id_proof})</div>
                     </div>
                 </div>
 
+                {/* Loan */}
                 <div className="card">
                     <h3 style={{ marginBottom: "1rem" }}>Loan Status</h3>
                     {activeLoan && activeLoan.status === "active" ? (
                         <>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "1.25rem" }}>
-                                {[
-                                    ["Loan Amount", `₹${parseFloat(activeLoan.loan_amount).toLocaleString()}`],
-                                    ["Given Amount", `₹${parseFloat(activeLoan.given_amount).toLocaleString()}`],
-                                    ["Start Date", format(new Date(activeLoan.start_date), "dd MMM yyyy")],
-                                    ["End Date", format(new Date(activeLoan.end_date), "dd MMM yyyy")],
-                                ].map(([label, value]) => (
-                                    <div key={label}>
-                                        <p style={{ fontSize: "0.68rem", opacity: 0.5 }}>{label}</p>
-                                        <p style={{ fontWeight: 600, marginTop: "2px" }}>{value}</p>
-                                    </div>
-                                ))}
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1.25rem" }}>
+                                <div><p style={{ fontSize: "0.65rem", opacity: 0.5 }}>Loan Amount</p><p style={{ fontWeight: 600 }}>₹{parseFloat(activeLoan.loan_amount).toLocaleString()}</p></div>
+                                <div><p style={{ fontSize: "0.65rem", opacity: 0.5 }}>Interest (12%)</p><p style={{ fontWeight: 600 }}>₹{parseFloat(activeLoan.loan_amount * 0.12).toLocaleString()}</p></div>
+                                <div><p style={{ fontSize: "0.65rem", opacity: 0.5 }}>Duration</p><p style={{ fontWeight: 600 }}>100 Days</p></div>
+                                <div><p style={{ fontSize: "0.65rem", opacity: 0.5 }}>Ends On</p><p style={{ fontWeight: 600 }}>{format(new Date(activeLoan.end_date), "dd MMM")}</p></div>
                             </div>
-                            <button className="btn" style={{ width: "100%", background: "rgba(239,68,68,0.1)", color: "var(--error)", border: "none", fontWeight: 700 }} onClick={handleCloseAccount}>
-                                <XCircle size={16} /> CLOSE ACCOUNT
-                            </button>
+                            <button className="btn" style={{ width: "100%", background: "rgba(239,68,68,0.1)", color: "var(--error)", border: "none" }} onClick={async () => {
+                                if (confirm("Close loan?")) { await closeLoan(activeLoan.id); fetchData(); }
+                            }}><XCircle size={16} /> Close Loan</button>
                         </>
                     ) : (
-                        <div>
-                            <p style={{ opacity: 0.5, marginBottom: "1rem", fontSize: "0.9rem" }}>No active loan.</p>
-                            {!showNewLoan ? (
-                                <button className="btn btn-primary" style={{ width: "100%" }} onClick={() => setShowNewLoan(true)}>
-                                    <PlusCircle size={16} /> New Loan
-                                </button>
-                            ) : (
-                                <div style={{ display: "flex", gap: "0.5rem" }}>
-                                    <input type="number" className="input" value={newLoanAmount} onChange={e => setNewLoanAmount(e.target.value)} placeholder="Amount" />
-                                    <button className="btn btn-primary" onClick={handleNewLoan}>Create</button>
-                                </div>
-                            )}
+                        <div style={{ textAlign: "center", padding: "1rem" }}>
+                            <p style={{ opacity: 0.4, fontSize: "0.85rem", marginBottom: "0.75rem" }}>No active loan found.</p>
+                            {!showNewLoan ? <button className="btn btn-primary" style={{ width: "100%" }} onClick={() => setShowNewLoan(true)}><PlusCircle size={16} /> New Loan</button>
+                                : <div style={{ display: "flex", gap: "0.5rem" }}><input type="number" className="input" value={newLoanAmount} onChange={e => setNewLoanAmount(e.target.value)} /><button className="btn btn-primary" onClick={async () => { await createNewLoanForCustomer(Number(id), newLoanAmount); setShowNewLoan(false); fetchData(); }}>Create</button></div>
+                            }
                         </div>
                     )}
                 </div>
             </div>
 
-            {/* Collection History */}
+            {/* History */}
             <div className="card">
-                <h3 style={{ marginBottom: "1.25rem" }}>Collection History</h3>
-                {historyDays.length === 0 ? (
-                    <p style={{ opacity: 0.5, textAlign: "center", padding: "2rem" }}>No history yet.</p>
-                ) : (
-                    <div style={{ overflowX: "auto" }}>
-                        <table>
-                            <thead>
-                                <tr style={{ fontSize: "0.78rem" }}>
-                                    <th>Date</th>
-                                    <th>Status</th>
-                                    <th style={{ textAlign: "right" }}>Amount</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {historyDays.map((day, idx) => {
-                                    const coll = collections.find((c: any) => isSameDay(new Date(c.payment_date), day));
-                                    return (
-                                        <tr key={idx}>
-                                            <td style={{ fontSize: "0.875rem" }}>{format(day, "dd MMM yyyy")}</td>
-                                            <td>{coll ? <CheckCircle size={15} color="var(--success)" /> : <span style={{ opacity: 0.2 }}>-</span>}</td>
-                                            <td style={{ textAlign: "right", fontSize: "0.875rem" }}>{coll ? `₹${parseFloat(coll.amount_collected).toLocaleString()}` : ""}</td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+                <h3 style={{ marginBottom: "1rem" }}>Collection History</h3>
+                <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                        <thead style={{ opacity: 0.5, fontSize: "0.75rem" }}><tr><th style={{ textAlign: "left", paddingBottom: "1rem" }}>Date</th><th style={{ textAlign: "center", paddingBottom: "1rem" }}>Status</th><th style={{ textAlign: "right", paddingBottom: "1rem" }}>Amt</th></tr></thead>
+                        <tbody>
+                            {historyDays.slice(0, 30).map((day, idx) => {
+                                const coll = collections.find((c: any) => isSameDay(new Date(c.payment_date), day));
+                                return (
+                                    <tr key={idx} style={{ fontSize: "0.85rem", borderBottom: "1px solid var(--border)" }}>
+                                        <td style={{ padding: "0.75rem 0" }}>{format(day, "dd MMM")}</td>
+                                        <td style={{ textAlign: "center" }}>{coll ? <CheckCircle size={14} color="var(--success)" /> : <span style={{ opacity: 0.1 }}>-</span>}</td>
+                                        <td style={{ textAlign: "right" }}>{coll ? `₹${parseFloat(coll.amount_collected).toLocaleString()}` : ""}</td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
-            {/* ── EDIT SIDE SHEET ── */}
+            {/* Edit Sheet */}
             <div className={`sheet-overlay ${isEditOpen ? "open" : ""}`} onClick={e => e.target === e.currentTarget && setIsEditOpen(false)}>
                 <div className="sheet-content">
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
-                        <h2>Edit Customer</h2>
-                        <button onClick={() => setIsEditOpen(false)} style={{ background: "none", border: "none", color: "white", cursor: "pointer" }}><XCircle size={24} /></button>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+                        <h2>Edit Profile</h2>
+                        <button onClick={() => setIsEditOpen(false)} style={{ background: "none", border: "none", color: "white" }}><XCircle size={24} /></button>
                     </div>
-
                     <form onSubmit={handleUpdate} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-                        <div>
-                            <label>FULL NAME</label>
-                            <input type="text" className="input" required value={editForm?.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
+                        <div><label>NAME</label><input type="text" className="input" required value={editForm?.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} /></div>
+                        <div className="responsive-grid cols-2">
+                            <div><label>OWN ID</label><input type="text" className="input" value={editForm?.ownId} onChange={e => setEditForm({ ...editForm, ownId: e.target.value })} /></div>
+                            <div><label>MOBILE</label><input type="tel" className="input" required value={editForm?.mobile} onChange={e => setEditForm({ ...editForm, mobile: e.target.value })} /></div>
                         </div>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                            <div>
-                                <label>OWN ID</label>
-                                <input type="text" className="input" value={editForm?.ownId} onChange={e => setEditForm({ ...editForm, ownId: e.target.value })} />
-                            </div>
-                            <div>
-                                <label>MOBILE</label>
-                                <input type="tel" className="input" required value={editForm?.mobile} onChange={e => setEditForm({ ...editForm, mobile: e.target.value })} />
-                            </div>
+                        <div><label>ADDRESS</label><textarea className="input" required value={editForm?.address} onChange={e => setEditForm({ ...editForm, address: e.target.value })} rows={2} /></div>
+                        <div className="responsive-grid cols-2">
+                            <div><label>ID PROOF</label><select className="input" value={editForm?.idProof} onChange={e => setEditForm({ ...editForm, idProof: e.target.value })}><option value="Aadhar">Aadhar</option><option value="PAN">PAN</option></select></div>
+                            <div><label>ID NUMBER</label><input type="text" className="input" required value={editForm?.idNumber} onChange={e => setEditForm({ ...editForm, idNumber: e.target.value })} /></div>
                         </div>
-                        <div>
-                            <label>ADDRESS</label>
-                            <textarea className="input" required value={editForm?.address} onChange={e => setEditForm({ ...editForm, address: e.target.value })} rows={2} />
-                        </div>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                            <div>
-                                <label>ID PROOF</label>
-                                <select className="input" value={editForm?.idProof} onChange={e => setEditForm({ ...editForm, idProof: e.target.value })}>
-                                    <option value="Aadhar">Aadhar</option>
-                                    <option value="PAN">PAN</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label>ID NUMBER</label>
-                                <input type="text" className="input" required value={editForm?.idNumber} onChange={e => setEditForm({ ...editForm, idNumber: e.target.value })} />
-                            </div>
-                        </div>
-                        <div>
-                            <label>LOAN AMOUNT (Only within 2 days of creation)</label>
-                            <input
-                                type="number"
-                                className="input"
-                                disabled={!canEditLoanAmount}
-                                value={editForm?.loanAmount}
-                                onChange={e => setEditForm({ ...editForm, loanAmount: e.target.value })}
-                                style={{ opacity: canEditLoanAmount ? 1 : 0.5 }}
-                            />
-                            {!canEditLoanAmount && <p style={{ fontSize: "0.7rem", color: "var(--warning)", marginTop: "4px" }}>Editing locked (Limit: 2 days)</p>}
-                        </div>
-
-                        <button type="submit" className="btn btn-primary" style={{ marginTop: "1rem", padding: "1rem" }} disabled={editing}>
-                            {editing ? "SAVING..." : "UPDATE PROFILE ✓"}
-                        </button>
+                        <div><label>LOAN AMOUNT (Limit: 2 days)</label><input type="number" className="input" disabled={!canEditLoanAmount} value={editForm?.loanAmount} onChange={e => setEditForm({ ...editForm, loanAmount: e.target.value })} style={{ opacity: canEditLoanAmount ? 1 : 0.5 }} /></div>
+                        <button type="submit" className="btn btn-primary" style={{ padding: "1rem" }} disabled={editing}>{editing ? "Saving..." : "Update ✓"}</button>
                     </form>
                 </div>
             </div>
