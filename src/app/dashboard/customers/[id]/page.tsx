@@ -99,7 +99,8 @@ export default function CustomerDetailsPage() {
                         <>
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1.25rem" }}>
                                 <div><p style={{ fontSize: "0.65rem", opacity: 0.5 }}>Loan Amount</p><p style={{ fontWeight: 600 }}>₹{parseFloat(activeLoan.loan_amount).toLocaleString()}</p></div>
-                                <div><p style={{ fontSize: "0.65rem", opacity: 0.5 }}>Interest (12%)</p><p style={{ fontWeight: 600 }}>₹{parseFloat(activeLoan.loan_amount * 0.12).toLocaleString()}</p></div>
+                                <div><p style={{ fontSize: "0.65rem", opacity: 0.5 }}>Interest (12%)</p><p style={{ fontWeight: 600 }}>₹{(parseFloat(activeLoan.loan_amount) * 0.12).toLocaleString()}</p></div>
+
                                 <div><p style={{ fontSize: "0.65rem", opacity: 0.5 }}>Duration</p><p style={{ fontWeight: 600 }}>100 Days</p></div>
                                 <div><p style={{ fontSize: "0.65rem", opacity: 0.5 }}>Ends On</p><p style={{ fontWeight: 600 }}>{format(new Date(activeLoan.end_date), "dd MMM")}</p></div>
                             </div>
