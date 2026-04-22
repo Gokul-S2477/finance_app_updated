@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getCustomerDetails, closeLoan, createNewLoanForCustomer, updateCustomer, deleteCustomer } from "@/db/actions";
-import { format, eachDayOfInterval, isSameDay } from "date-fns";
+import { format, eachDayOfInterval, isSameDay, addDays } from "date-fns";
 import { ArrowLeft, User, Phone, MapPin, Calendar, CreditCard, CheckCircle, XCircle, PlusCircle, Edit, Trash2 } from "lucide-react";
 
 export default function CustomerDetailsPage() {
@@ -179,7 +179,7 @@ export default function CustomerDetailsPage() {
                         
                         let lastCollDate = loanStart;
                         if (loanCollections.length > 0) {
-                            const times = loanCollections.map((c: any) => new Date(c.payment_date).getTime()).filter(t => !isNaN(t));
+                            const times = loanCollections.map((c: any) => new Date(c.payment_date).getTime()).filter((t: number) => !isNaN(t));
                             if (times.length > 0) lastCollDate = new Date(Math.max(...times));
                         }
 

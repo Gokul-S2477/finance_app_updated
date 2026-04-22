@@ -59,9 +59,19 @@ export async function GET() {
 
     // ADD UNIQUE CONSTRAINT for upserts (loan_id + payment_date)
     try {
-      await sql`ALTER TABLE collections ADD CONSTRAINT unique_loan_date UNIQUE (loan_id, payment_date);`;
+      // Check if duplicate data exists first to avoid hard crash on ALTER TABLE
+      const duplicates = await sql`
+        SELECT loan_id, payment_date, COUNT(*) 
+        FROM collections 
+        GROUP BY loan_id, payment_date 
+        HAVING COUNT(*) > 1
+      `;
+      
+      if (duplicates.length === 0) {
+        await sql`ALTER TABLE collections ADD CONSTRAINT unique_loan_date UNIQUE (loan_id, payment_date);`;
+      }
     } catch (_) {
-      // Constraint already exists, that's fine
+      // Constraint likely already exists or table has duplicates we can't fix automatically
     }
 
     return NextResponse.json({ ok: true, message: "Database initialized and all columns applied!" });
