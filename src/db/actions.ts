@@ -83,7 +83,7 @@ export async function createCustomer(data: any) {
 }
 
 export async function updateCustomer(id: number, data: any) {
-  const { ownId, name, address, idProof, idNumber, dob, mobile, mobileAlt, loanAmount } = data;
+  const { ownId, name, address, idProof, idNumber, dob, mobile, mobileAlt, loanAmount, startDate } = data;
 
   // 1. Update Customer Profile
   await sql`
@@ -99,8 +99,8 @@ export async function updateCustomer(id: number, data: any) {
     WHERE id = ${id}
   `;
 
-  // 2. Update Loan if permitted (within 2 days of creation)
-  if (loanAmount) {
+  // 2. Update Loan if permitted (within 2 days of creation or just updating start date)
+  if (loanAmount || startDate) {
     const loanRows = await sql`SELECT * FROM loans WHERE customer_id = ${id} AND status = 'active' ORDER BY created_at DESC LIMIT 1`;
     const activeLoan = loanRows[0];
 
@@ -109,13 +109,28 @@ export async function updateCustomer(id: number, data: any) {
       const now = new Date();
       const diffDays = Math.ceil(Math.abs(now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
 
-      if (diffDays <= 2) {
+      // Allow updating start date always, but amount only within 2 days
+      let updateSql = "";
+      const updates = [];
+      
+      if (startDate) {
+        const start = new Date(startDate);
+        const end = addDays(start, 100);
+        updates.push(sql`start_date = ${start.toISOString().split("T")[0]}`);
+        updates.push(sql`end_date = ${end.toISOString().split("T")[0]}`);
+      }
+
+      if (loanAmount && diffDays <= 2) {
         const amount = parseFloat(loanAmount);
         const givenAmount = amount * 0.88;
+        updates.push(sql`loan_amount = ${amount}`);
+        updates.push(sql`given_amount = ${givenAmount}`);
+      }
+
+      if (updates.length > 0) {
         await sql`
           UPDATE loans 
-          SET loan_amount = ${amount}, 
-              given_amount = ${givenAmount}
+          SET ${updates.reduce((acc, curr, i) => i === 0 ? curr : sql`${acc}, ${curr}`)}
           WHERE id = ${activeLoan.id}
         `;
       }

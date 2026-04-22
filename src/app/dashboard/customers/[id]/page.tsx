@@ -34,7 +34,8 @@ export default function CustomerDetailsPage() {
                 idProof: d.customer.id_proof || "",
                 idNumber: d.customer.id_number || "",
                 dob: d.customer.dob ? format(new Date(d.customer.dob), "yyyy-MM-dd") : "",
-                loanAmount: d.activeLoan ? d.activeLoan.loan_amount.toString() : ""
+                loanAmount: d.activeLoan ? d.activeLoan.loan_amount.toString() : "",
+                startDate: d.activeLoan ? format(new Date(d.activeLoan.start_date), "yyyy-MM-dd") : ""
             });
             setExpandedLoan(d.activeLoan ? d.activeLoan.id : null);
         }
@@ -299,7 +300,10 @@ export default function CustomerDetailsPage() {
                             <div><label>ID PROOF</label><select className="input" value={editForm?.idProof || ""} onChange={e => setEditForm({ ...editForm, idProof: e.target.value })}><option value="">-- Optional --</option><option value="Aadhar">Aadhar</option><option value="PAN">PAN</option></select></div>
                             <div><label>ID NUMBER</label><input type="text" className="input" value={editForm?.idNumber || ""} onChange={e => setEditForm({ ...editForm, idNumber: e.target.value })} placeholder="Optional" /></div>
                         </div>
-                        <div><label>LOAN AMOUNT (Limit: 2 days)</label><input type="number" className="input" disabled={!canEditLoanAmount} value={editForm?.loanAmount || ""} onChange={e => setEditForm({ ...editForm, loanAmount: e.target.value })} style={{ opacity: canEditLoanAmount ? 1 : 0.5 }} /></div>
+                        <div className="responsive-grid cols-2">
+                            <div><label>LOAN AMOUNT (Limit: 2 days)</label><input type="number" className="input" disabled={!canEditLoanAmount} value={editForm?.loanAmount || ""} onChange={e => setEditForm({ ...editForm, loanAmount: e.target.value })} style={{ opacity: canEditLoanAmount ? 1 : 0.5 }} /></div>
+                            <div><label>LOAN START DATE</label><input type="date" className="input" value={editForm?.startDate || ""} onChange={e => setEditForm({ ...editForm, startDate: e.target.value })} /></div>
+                        </div>
                         <button type="submit" className="btn btn-primary" style={{ padding: "1rem" }} disabled={editing}>{editing ? "Saving..." : "Update ✓"}</button>
                     </form>
                 </div>
