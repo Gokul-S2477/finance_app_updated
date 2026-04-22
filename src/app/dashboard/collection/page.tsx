@@ -62,19 +62,6 @@ export default function CollectionPage() {
             // Fetch fresh data after save
             const freshData = await getCollectionStatus(date, search);
             setCustomers(freshData as any[]);
-
-            // Check if loan is fully paid
-            const freshItem = (freshData as any[]).find((r: any) => r.loanId === item.loanId);
-            if (freshItem) {
-                const freshTotal = parseFloat(freshItem.totalCollected || "0");
-                const loanAmt = parseFloat(item.loanAmount || "0");
-                if (loanAmt > 0 && freshTotal >= loanAmt) {
-                    if (window.confirm(`✅ Full amount collected!\n\nTotal: ₹${freshTotal.toLocaleString()} / ₹${loanAmt.toLocaleString()}\n\nClose this loan now?`)) {
-                        await closeLoan(item.loanId);
-                        fetchStatus();
-                    }
-                }
-            }
         } catch (e) {
             setSaving(null);
             alert("Failed to save. Please try again.");

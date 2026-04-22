@@ -168,10 +168,18 @@ export default function CustomerDetailsPage() {
                         const loanAmt = parseFloat(loan.loan_amount);
                         
                         let endDay = new Date();
+                        const lastCollDate = loanCollections.length > 0 
+                            ? new Date(Math.max(...loanCollections.map((c: any) => new Date(c.payment_date).getTime())))
+                            : new Date(loan.start_date);
+
                         if (loan.status === "closed") {
-                            endDay = loan.closed_date ? new Date(loan.closed_date) : new Date(loan.end_date);
+                            const closedDate = loan.closed_date ? new Date(loan.closed_date) : new Date(loan.end_date);
+                            // Set endDay to the later of closedDate or last collection date to ensure all data shows
+                            endDay = lastCollDate > closedDate ? lastCollDate : closedDate;
                         } else {
-                            endDay = new Date() > new Date(loan.end_date) ? new Date() : new Date(loan.end_date);
+                            const today = new Date();
+                            const loanEnd = new Date(loan.end_date);
+                            endDay = today > loanEnd ? today : loanEnd;
                         }
                         
                         // Safety check in case dates are invalid or start > end
@@ -184,10 +192,11 @@ export default function CustomerDetailsPage() {
 
                         let runningSum = 0;
                         const historyWithSums = daysForLoan.map(day => {
-                            const coll = loanCollections.find((c: any) => isSameDay(new Date(c.payment_date), day));
-                            const amt = coll ? parseFloat(coll.amount_collected) : 0;
+                            // Sum all collections for this day (in case of multiple entries)
+                            const dayColls = loanCollections.filter((c: any) => isSameDay(new Date(c.payment_date), day));
+                            const amt = dayColls.reduce((sum: number, c: any) => sum + parseFloat(c.amount_collected), 0);
                             runningSum += amt;
-                            return { day, amt, runningSum, coll };
+                            return { day, amt, runningSum, hasColl: dayColls.length > 0 };
                         });
 
                         const reversedHistory = [...historyWithSums].reverse();
@@ -243,7 +252,7 @@ export default function CustomerDetailsPage() {
                                                         <tr key={originalIdx} style={{ fontSize: "0.85rem", borderBottom: "1px solid var(--border)" }}>
                                                             <td style={{ padding: "0.75rem 0", whiteSpace: "nowrap" }}>{format(row.day, "dd MMM")}</td>
                                                             <td style={{ textAlign: "center" }}>
-                                                                {row.coll ? (
+                                                                {row.hasColl ? (
                                                                     <span style={{ color: "var(--success)", fontWeight: 600 }}>₹{row.amt.toLocaleString()}</span>
                                                                 ) : (
                                                                     <span style={{ opacity: 0.1 }}>-</span>
