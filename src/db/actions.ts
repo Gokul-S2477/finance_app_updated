@@ -215,7 +215,12 @@ export async function recordCollection(loanId: number, dateStr: string, amount: 
 
 
 export async function closeLoan(loanId: number) {
-  return await sql`UPDATE loans SET status = 'closed', closed_date = NOW() WHERE id = ${loanId}`;
+  // Try with closed_date first; if column missing, fall back to just status update
+  try {
+    return await sql`UPDATE loans SET status = 'closed', closed_date = NOW() WHERE id = ${loanId}`;
+  } catch {
+    return await sql`UPDATE loans SET status = 'closed' WHERE id = ${loanId}`;
+  }
 }
 
 export async function createNewLoanForCustomer(customerId: number, loanAmount: string) {

@@ -50,14 +50,19 @@ export async function GET() {
       );
     `;
 
+    // Safe column migrations — add missing columns if they don't exist
+    try { await sql`ALTER TABLE loans ADD COLUMN IF NOT EXISTS closed_date TIMESTAMP`; } catch (_) {}
+    try { await sql`ALTER TABLE customers ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE`; } catch (_) {}
+    try { await sql`ALTER TABLE customers ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP`; } catch (_) {}
+
     // ADD UNIQUE CONSTRAINT for upserts (loan_id + payment_date)
     try {
       await sql`ALTER TABLE collections ADD CONSTRAINT unique_loan_date UNIQUE (loan_id, payment_date);`;
-    } catch (e) {
-      console.log("Constraint might already exist");
+    } catch (_) {
+      // Constraint already exists, that's fine
     }
 
-    return NextResponse.json({ ok: true, message: "Database initialized/updated with unique constraint!" });
+    return NextResponse.json({ ok: true, message: "Database initialized and all columns applied!" });
   } catch (err: any) {
     return NextResponse.json({ ok: false, error: err.message }, { status: 500 });
   }

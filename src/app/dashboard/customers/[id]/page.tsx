@@ -134,10 +134,14 @@ export default function CustomerDetailsPage() {
                                 </div>
                                 <button className="btn" style={{ width: "100%", background: "rgba(239,68,68,0.1)", color: "var(--error)", border: "none" }} onClick={async () => {
                                     if (totalCollected < loanAmount) {
-                                        alert("Cannot close loan. The full amount has not been collected yet.");
+                                        const shortfall = (loanAmount - totalCollected).toLocaleString();
+                                        alert(`Cannot close loan yet.\n\nStill pending: ₹${shortfall}\n\nCollect the remaining amount first.`);
                                         return;
                                     }
-                                    if (confirm("Close loan?")) { await closeLoan(activeLoan.id); fetchData(); }
+                                    if (confirm(`Close loan?\n\nTotal collected: ₹${totalCollected.toLocaleString()}\nLoan amount: ₹${loanAmount.toLocaleString()}`)) {
+                                        await closeLoan(activeLoan.id);
+                                        fetchData();
+                                    }
                                 }}><XCircle size={16} /> Close Loan</button>
                             </>
                         ) : (

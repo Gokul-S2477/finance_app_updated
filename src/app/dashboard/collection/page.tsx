@@ -30,21 +30,24 @@ export default function CollectionPage() {
 
         await recordCollection(item.loanId, date, amount);
 
-        const totalSoFar = parseFloat(item.totalCollected || "0");
-        const amountVal = parseFloat(amount);
+        // Re-fetch fresh total from server to be accurate
+        const freshData = await getCollectionStatus(date, search);
+        const freshItem = (freshData as any[]).find((r: any) => r.loanId === item.loanId);
+        const freshTotal = parseFloat(freshItem?.totalCollected || "0");
         const loanAmt = parseFloat(item.loanAmount || "10000");
-
-        if (totalSoFar + amountVal >= loanAmt) {
-            if (window.confirm("Amount collected fully successfully. Shall we close the loan?")) {
-                await closeLoan(item.loanId);
-            }
-        }
 
         setSaving(null);
         setAmounts(prev => { const n = { ...prev }; delete n[item.loanId]; return n; });
         const newEditing = new Set(editingIds);
         newEditing.delete(item.loanId);
         setEditingIds(newEditing);
+
+        if (freshTotal >= loanAmt) {
+            if (window.confirm(`✅ Total collected ₹${freshTotal.toLocaleString()} has reached the loan amount ₹${loanAmt.toLocaleString()}.\n\nClose this loan now?`)) {
+                await closeLoan(item.loanId);
+            }
+        }
+
         fetchStatus();
     };
 
