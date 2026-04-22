@@ -10,6 +10,8 @@ export const customers = pgTable("customers", {
     dob: date("dob").notNull(),
     mobile: text("mobile_no").notNull(),
     status: boolean("status").default(true), // active/inactive
+    isDeleted: boolean("is_deleted").default(false),
+    deletedAt: timestamp("deleted_at"),
     createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -22,6 +24,7 @@ export const loans = pgTable("loans", {
     startDate: date("start_date").notNull(),
     endDate: date("end_date").notNull(),
     status: text("status", { enum: ["active", "closed"] }).default("active"),
+    closedDate: timestamp("closed_date"),
     createdAt: timestamp("created_at").defaultNow(),
 });
 

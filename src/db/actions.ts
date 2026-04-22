@@ -11,7 +11,8 @@ export async function getCustomers(search?: string) {
       SELECT * FROM customers
       WHERE is_deleted = FALSE 
         AND (LOWER(name) LIKE ${"%" + search.toLowerCase() + "%"}
-        OR LOWER(COALESCE(own_id, '')) LIKE ${"%" + search.toLowerCase() + "%"})
+        OR LOWER(COALESCE(own_id, '')) LIKE ${"%" + search.toLowerCase() + "%"}
+        OR mobile_no LIKE ${"%" + search + "%"})
       ORDER BY created_at DESC
     `;
   }
@@ -25,6 +26,27 @@ export async function getDeletedCustomers() {
 export async function createCustomer(data: any) {
   const { loanAmount = "10000", startDate: formStart, ownId, name, address, idProof, idNumber, dob, mobile } = data;
 
+  if (ownId) {
+    const existing = await sql`SELECT * FROM customers WHERE own_id = ${ownId}`;
+    if (existing.length > 0) {
+      if (existing[0].is_deleted) {
+        await restoreCustomer(existing[0].id);
+        await updateCustomer(existing[0].id, data);
+        const start = formStart ? new Date(formStart) : addDays(new Date(), 1);
+        const end = addDays(start, 100);
+        const amount = parseFloat(loanAmount);
+        const givenAmount = amount * 0.88;
+        await sql`
+          INSERT INTO loans (customer_id, loan_amount, given_amount, interest_rate, start_date, end_date, status)
+          VALUES (${existing[0].id}, ${amount}, ${givenAmount}, 12.00, ${start.toISOString().split("T")[0]}, ${end.toISOString().split("T")[0]}, 'active')
+        `;
+        return existing[0];
+      } else {
+        throw new Error("Customer with this ID already exists.");
+      }
+    }
+  }
+
   // 1. Create Customer
   const rows = await sql`
     INSERT INTO customers (own_id, name, address, id_proof, id_number, dob, mobile_no)
@@ -34,7 +56,7 @@ export async function createCustomer(data: any) {
   const customer = rows[0];
 
   // 2. Create Loan (100 days, 12% interest)
-  const start = formStart ? new Date(formStart) : new Date();
+  const start = formStart ? new Date(formStart) : addDays(new Date(), 1);
   const end = addDays(start, 100);
   const amount = parseFloat(loanAmount);
   const givenAmount = amount * 0.88;
@@ -109,19 +131,24 @@ export async function getCustomerDetails(id: number) {
   const customerRows = await sql`SELECT * FROM customers WHERE id = ${id}`;
   const customer = customerRows[0];
 
-  const loanRows = await sql`
-    SELECT * FROM loans WHERE customer_id = ${id} ORDER BY created_at DESC LIMIT 1
+  const allLoans = await sql`
+    SELECT * FROM loans WHERE customer_id = ${id} ORDER BY created_at DESC
   `;
-  const activeLoan = loanRows[0] || null;
+  const activeLoan = allLoans.find((l: any) => l.status === 'active') || allLoans[0] || null;
 
-  let collections: any[] = [];
-  if (activeLoan) {
-    collections = await sql`
-      SELECT * FROM collections WHERE loan_id = ${activeLoan.id} ORDER BY payment_date DESC
+  let allCollections: any[] = [];
+  if (allLoans.length > 0) {
+    allCollections = await sql`
+      SELECT * FROM collections 
+      WHERE loan_id IN (${allLoans.map((l: any) => l.id).join(',')}) 
+      ORDER BY payment_date DESC
     `;
   }
 
-  return { customer, activeLoan, collections };
+  // Fallback for previous code
+  const collections = allCollections.filter((c: any) => activeLoan && c.loan_id === activeLoan.id);
+
+  return { customer, activeLoan, collections, allLoans, allCollections };
 }
 
 export async function getCollectionStatus(dateStr: string, search?: string) {
@@ -138,14 +165,27 @@ export async function getCollectionStatus(dateStr: string, search?: string) {
 
   const processedLoanIds = new Set(dateCollections.map((c: any) => c.loan_id));
 
+  // Get total collected for each active loan
+  const totalCollectionsRows = await sql`
+    SELECT loan_id, SUM(amount_collected) as total
+    FROM collections
+    WHERE loan_id IN (
+      SELECT id FROM loans WHERE status = 'active'
+    )
+    GROUP BY loan_id
+  `;
+  const totalCollectedMap = new Map(totalCollectionsRows.map((r: any) => [r.loan_id, parseFloat(r.total)]));
+
   let result = activeLoans.map((loan: any) => ({
     loanId: loan.id,
     customerId: loan.customer_id,
     ownId: loan.own_id,
     name: loan.name,
+    loanAmount: loan.loan_amount,
     amountToCollect: (parseFloat(loan.loan_amount) / 100).toFixed(2),
     isProcessed: processedLoanIds.has(loan.id),
     collectedAmount: dateCollections.find((c: any) => c.loan_id === loan.id)?.amount_collected || "0",
+    totalCollected: totalCollectedMap.get(loan.id) || 0,
   }));
 
   if (search && search.trim() !== "") {
@@ -174,11 +214,11 @@ export async function recordCollection(loanId: number, dateStr: string, amount: 
 
 
 export async function closeLoan(loanId: number) {
-  return await sql`UPDATE loans SET status = 'closed' WHERE id = ${loanId}`;
+  return await sql`UPDATE loans SET status = 'closed', closed_date = NOW() WHERE id = ${loanId}`;
 }
 
 export async function createNewLoanForCustomer(customerId: number, loanAmount: string) {
-  const start = new Date();
+  const start = addDays(new Date(), 1);
   const end = addDays(start, 100);
   const amount = parseFloat(loanAmount);
   const givenAmount = amount * 0.88;

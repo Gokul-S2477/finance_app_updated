@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Search, Calendar as CalendarIcon, CheckCircle2, Circle, ChevronRight, Edit2 } from "lucide-react";
-import { getCollectionStatus, recordCollection } from "@/db/actions";
+import { getCollectionStatus, recordCollection, closeLoan } from "@/db/actions";
 import { format } from "date-fns";
 
 export default function CollectionPage() {
@@ -23,15 +23,27 @@ export default function CollectionPage() {
         setLoading(false);
     };
 
-    const handleEntry = async (loanId: number, defaultAmt: string) => {
-        const amount = amounts[loanId] || defaultAmt;
+    const handleEntry = async (item: any) => {
+        const amount = amounts[item.loanId] || item.amountToCollect;
         if (!amount || parseFloat(amount) <= 0) return;
-        setSaving(loanId);
-        await recordCollection(loanId, date, amount);
+        setSaving(item.loanId);
+
+        await recordCollection(item.loanId, date, amount);
+
+        const totalSoFar = parseFloat(item.totalCollected || "0");
+        const amountVal = parseFloat(amount);
+        const loanAmt = parseFloat(item.loanAmount || "10000");
+
+        if (totalSoFar + amountVal >= loanAmt) {
+            if (window.confirm("Amount collected fully successfully. Shall we close the loan?")) {
+                await closeLoan(item.loanId);
+            }
+        }
+
         setSaving(null);
-        setAmounts(prev => { const n = { ...prev }; delete n[loanId]; return n; });
+        setAmounts(prev => { const n = { ...prev }; delete n[item.loanId]; return n; });
         const newEditing = new Set(editingIds);
-        newEditing.delete(loanId);
+        newEditing.delete(item.loanId);
         setEditingIds(newEditing);
         fetchStatus();
     };
@@ -72,9 +84,9 @@ export default function CollectionPage() {
                                 <div style={{ minWidth: 0, flex: 1 }}>
                                     <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                                         {isActuallyProcessed ? <CheckCircle2 size={14} color="var(--success)" /> : <Circle size={14} style={{ opacity: 0.3 }} />}
+                                        <h3 style={{ fontSize: "1.1rem", fontWeight: 800, color: "var(--primary)" }}>{item.ownId || `#${item.cust_id}`}</h3>
                                         <span style={{ fontSize: "0.95rem", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.name}</span>
                                     </div>
-                                    <p style={{ fontSize: "0.75rem", opacity: 0.4, paddingLeft: "1.25rem" }}>{item.ownId || `#${item.cust_id}`}</p>
                                 </div>
 
                                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexShrink: 0 }}>
@@ -99,7 +111,7 @@ export default function CollectionPage() {
                                             </div>
                                             <input type="number" inputMode="numeric" className="input" placeholder={item.amountToCollect} value={amounts[item.loanId] || ""} onChange={e => setAmounts(prev => ({ ...prev, [item.loanId]: e.target.value }))}
                                                 style={{ width: "70px", padding: "0.45rem", textAlign: "center", fontSize: "0.9rem" }} />
-                                            <button className="btn btn-primary" style={{ padding: "0.45rem" }} onClick={() => handleEntry(item.loanId, item.amountToCollect)}>
+                                            <button className="btn btn-primary" style={{ padding: "0.45rem" }} onClick={() => handleEntry(item)}>
                                                 <ChevronRight size={18} />
                                             </button>
                                         </div>

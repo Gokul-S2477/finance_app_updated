@@ -49,7 +49,7 @@ export default function CustomerDetailsPage() {
 
     if (loading || !data) return <div style={{ padding: "3rem", opacity: 0.5, textAlign: "center" }}>Loading Profile...</div>;
 
-    const { customer, activeLoan, collections } = data;
+    const { customer, activeLoan, collections, allLoans = [], allCollections = [] } = data;
     let canEditLoanAmount = false;
     if (activeLoan) {
         const createdAt = new Date(activeLoan.created_at);
@@ -57,7 +57,12 @@ export default function CustomerDetailsPage() {
         canEditLoanAmount = diffDays <= 2;
     }
 
-    const historyDays = activeLoan ? eachDayOfInterval({ start: new Date(activeLoan.start_date), end: new Date() }).reverse() : [];
+    const loanAmount = activeLoan ? parseFloat(activeLoan.loan_amount) : 0;
+    const totalCollected = collections.reduce((acc: number, c: any) => acc + parseFloat(c.amount_collected), 0);
+    const pendingAmount = loanAmount - totalCollected;
+    const remainingDays = activeLoan ? Math.max(0, Math.ceil((new Date(activeLoan.end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))) : 0;
+
+    const [expandedLoan, setExpandedLoan] = useState<number | null>(activeLoan ? activeLoan.id : null);
 
     return (
         <>
@@ -73,6 +78,28 @@ export default function CustomerDetailsPage() {
                         }}><Trash2 size={16} /></button>
                     </div>
                 </div>
+
+                {/* Top Stats */}
+                {activeLoan && (
+                    <div className="responsive-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", marginBottom: "1.5rem", gap: "1rem" }}>
+                        <div className="card" style={{ padding: "1rem", textAlign: "center" }}>
+                            <p style={{ fontSize: "0.7rem", opacity: 0.6, marginBottom: "0.4rem" }}>Loan Amount</p>
+                            <p style={{ fontSize: "1.2rem", fontWeight: 700, color: "var(--primary)" }}>₹{loanAmount.toLocaleString()}</p>
+                        </div>
+                        <div className="card" style={{ padding: "1rem", textAlign: "center" }}>
+                            <p style={{ fontSize: "0.7rem", opacity: 0.6, marginBottom: "0.4rem" }}>Total Collected</p>
+                            <p style={{ fontSize: "1.2rem", fontWeight: 700, color: "var(--success)" }}>₹{totalCollected.toLocaleString()}</p>
+                        </div>
+                        <div className="card" style={{ padding: "1rem", textAlign: "center" }}>
+                            <p style={{ fontSize: "0.7rem", opacity: 0.6, marginBottom: "0.4rem" }}>Pending Amount</p>
+                            <p style={{ fontSize: "1.2rem", fontWeight: 700, color: pendingAmount > 0 ? "var(--warning)" : "var(--success)" }}>₹{Math.max(0, pendingAmount).toLocaleString()}</p>
+                        </div>
+                        <div className="card" style={{ padding: "1rem", textAlign: "center" }}>
+                            <p style={{ fontSize: "0.7rem", opacity: 0.6, marginBottom: "0.4rem" }}>Remaining Days</p>
+                            <p style={{ fontSize: "1.2rem", fontWeight: 700 }}>{remainingDays} <span style={{fontSize: "0.8rem", fontWeight: 400}}>days</span></p>
+                        </div>
+                    </div>
+                )}
 
                 <div className="responsive-grid cols-2" style={{ marginBottom: "1.5rem" }}>
                     {/* Profile */}
@@ -102,9 +129,13 @@ export default function CustomerDetailsPage() {
                                     <div><p style={{ fontSize: "0.65rem", opacity: 0.5 }}>Loan Amount</p><p style={{ fontWeight: 600 }}>₹{parseFloat(activeLoan.loan_amount).toLocaleString()}</p></div>
                                     <div><p style={{ fontSize: "0.65rem", opacity: 0.5 }}>Interest (12%)</p><p style={{ fontWeight: 600 }}>₹{(parseFloat(activeLoan.loan_amount) * 0.12).toLocaleString()}</p></div>
                                     <div><p style={{ fontSize: "0.65rem", opacity: 0.5 }}>Duration</p><p style={{ fontWeight: 600 }}>100 Days</p></div>
-                                    <div><p style={{ fontSize: "0.65rem", opacity: 0.5 }}>Ends On</p><p style={{ fontWeight: 600 }}>{format(new Date(activeLoan.end_date), "dd MMM")}</p></div>
+                                    <div><p style={{ fontSize: "0.65rem", opacity: 0.5 }}>Ends On</p><p style={{ fontWeight: 600 }}>{format(new Date(activeLoan.end_date), "dd MMM yyyy")}</p></div>
                                 </div>
                                 <button className="btn" style={{ width: "100%", background: "rgba(239,68,68,0.1)", color: "var(--error)", border: "none" }} onClick={async () => {
+                                    if (totalCollected < loanAmount) {
+                                        alert("Cannot close loan. The full amount has not been collected yet.");
+                                        return;
+                                    }
                                     if (confirm("Close loan?")) { await closeLoan(activeLoan.id); fetchData(); }
                                 }}><XCircle size={16} /> Close Loan</button>
                             </>
@@ -119,26 +150,96 @@ export default function CustomerDetailsPage() {
                     </div>
                 </div>
 
-                {/* History */}
-                <div className="card">
-                    <h3 style={{ marginBottom: "1rem" }}>Collection History</h3>
-                    <div style={{ overflowX: "auto" }}>
-                        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                            <thead style={{ opacity: 0.5, fontSize: "0.75rem" }}><tr><th style={{ textAlign: "left", paddingBottom: "1rem" }}>Date</th><th style={{ textAlign: "center", paddingBottom: "1rem" }}>Status</th><th style={{ textAlign: "right", paddingBottom: "1rem" }}>Amt</th></tr></thead>
-                            <tbody>
-                                {historyDays.slice(0, 30).map((day, idx) => {
-                                    const coll = collections.find((c: any) => isSameDay(new Date(c.payment_date), day));
-                                    return (
-                                        <tr key={idx} style={{ fontSize: "0.85rem", borderBottom: "1px solid var(--border)" }}>
-                                            <td style={{ padding: "0.75rem 0" }}>{format(day, "dd MMM")}</td>
-                                            <td style={{ textAlign: "center" }}>{coll ? <CheckCircle size={14} color="var(--success)" /> : <span style={{ opacity: 0.1 }}>-</span>}</td>
-                                            <td style={{ textAlign: "right" }}>{coll ? `₹${parseFloat(coll.amount_collected).toLocaleString()}` : ""}</td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
+                {/* History Accordions */}
+                <h3 style={{ marginBottom: "1rem" }}>Collection History</h3>
+                <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                    {allLoans.map((loan: any, lIndex: number) => {
+                        const isExpanded = expandedLoan === loan.id || (expandedLoan === null && lIndex === 0);
+                        const loanCollections = allCollections.filter((c: any) => c.loan_id === loan.id);
+                        
+                        let endDay = new Date();
+                        if (loan.status === "closed") {
+                            endDay = loan.closed_date ? new Date(loan.closed_date) : new Date(loan.end_date);
+                        } else {
+                            endDay = new Date() > new Date(loan.end_date) ? new Date() : new Date(loan.end_date);
+                        }
+                        
+                        // Safety check in case dates are invalid or start > end
+                        let daysForLoan = [];
+                        try {
+                             daysForLoan = eachDayOfInterval({ start: new Date(loan.start_date), end: endDay });
+                        } catch(e) {
+                             daysForLoan = [new Date(loan.start_date)];
+                        }
+
+                        let runningSum = 0;
+                        const historyWithSums = daysForLoan.map(day => {
+                            const coll = loanCollections.find((c: any) => isSameDay(new Date(c.payment_date), day));
+                            const amt = coll ? parseFloat(coll.amount_collected) : 0;
+                            runningSum += amt;
+                            return { day, amt, runningSum, coll };
+                        });
+
+                        const reversedHistory = [...historyWithSums].reverse();
+
+                        return (
+                            <div key={loan.id} className="card" style={{ padding: "0" }}>
+                                <div 
+                                    style={{ padding: "1rem", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", borderBottom: isExpanded ? "1px solid var(--border)" : "none" }}
+                                    onClick={() => setExpandedLoan(isExpanded ? null : loan.id)}
+                                >
+                                    <div>
+                                        <h4 style={{ margin: 0, fontSize: "1rem" }}>Loan #{allLoans.length - lIndex} {loan.status === 'active' ? '(Active)' : '(Closed)'}</h4>
+                                        <p style={{ margin: 0, fontSize: "0.75rem", opacity: 0.5 }}>{format(new Date(loan.start_date), "dd MMM yyyy")} - {loan.status === 'closed' ? "Closed" : "Present"}</p>
+                                    </div>
+                                    <div style={{ opacity: 0.5 }}>{isExpanded ? "▲" : "▼"}</div>
+                                </div>
+                                
+                                {isExpanded && (
+                                    <div style={{ padding: "1rem", overflowX: "auto" }}>
+                                        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                                            <thead style={{ opacity: 0.5, fontSize: "0.75rem" }}>
+                                                <tr>
+                                                    <th style={{ textAlign: "left", paddingBottom: "1rem", whiteSpace: "nowrap" }}>Date</th>
+                                                    <th style={{ textAlign: "center", paddingBottom: "1rem", whiteSpace: "nowrap" }}>Collected</th>
+                                                    <th style={{ textAlign: "right", paddingBottom: "1rem", whiteSpace: "nowrap" }}>Running Sum</th>
+                                                    <th style={{ textAlign: "right", paddingBottom: "1rem", whiteSpace: "nowrap" }}>Month Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {reversedHistory.map((row, rIdx) => {
+                                                    const originalIdx = daysForLoan.length - 1 - rIdx;
+                                                    const isMonthEnd = originalIdx % 30 === 29 || originalIdx === daysForLoan.length - 1;
+                                                    
+                                                    return (
+                                                        <tr key={originalIdx} style={{ fontSize: "0.85rem", borderBottom: "1px solid var(--border)" }}>
+                                                            <td style={{ padding: "0.75rem 0", whiteSpace: "nowrap" }}>{format(row.day, "dd MMM")}</td>
+                                                            <td style={{ textAlign: "center" }}>
+                                                                {row.coll ? (
+                                                                    <span style={{ color: "var(--success)", fontWeight: 600 }}>₹{row.amt.toLocaleString()}</span>
+                                                                ) : (
+                                                                    <span style={{ opacity: 0.2 }}>-</span>
+                                                                )}
+                                                            </td>
+                                                            <td style={{ textAlign: "right", opacity: 0.8 }}>₹{row.runningSum.toLocaleString()}</td>
+                                                            <td style={{ textAlign: "right", fontWeight: isMonthEnd ? 700 : 400, color: isMonthEnd ? "var(--primary)" : "inherit" }}>
+                                                                {isMonthEnd ? `₹${row.runningSum.toLocaleString()}` : ""}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                                {reversedHistory.length === 0 && (
+                                                    <tr>
+                                                        <td colSpan={4} style={{ textAlign: "center", padding: "1rem", opacity: 0.5 }}>No history yet.</td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
 

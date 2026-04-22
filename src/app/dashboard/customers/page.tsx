@@ -12,7 +12,7 @@ export default function CustomersPage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
-    const blankForm = { ownId: "", name: "", address: "", idProof: "Aadhar", idNumber: "", dob: "", mobile: "", loanAmount: "10000", startDate: format(new Date(), "yyyy-MM-dd") };
+    const blankForm = { ownId: "", name: "", address: "", idProof: "Aadhar", idNumber: "", dob: "", mobile: "", loanAmount: "10000", startDate: format(addDays(new Date(), 1), "yyyy-MM-dd") };
     const [form, setForm] = useState(blankForm);
     const updateField = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
 
@@ -69,9 +69,12 @@ export default function CustomersPage() {
                                 <div style={{ width: "40px", height: "40px", borderRadius: "12px", background: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                                     <User size={20} />
                                 </div>
-                                <div style={{ minWidth: 0 }}>
-                                    <h3 style={{ fontSize: "1rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.name}</h3>
-                                    <p style={{ fontSize: "0.75rem", opacity: 0.5 }}>{c.own_id || `#${c.id}`}</p>
+                                <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: "0.2rem" }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                                        <h3 style={{ fontSize: "1.1rem", fontWeight: 800, color: "var(--primary)" }}>{c.own_id || `#${c.id}`}</h3>
+                                        <h3 style={{ fontSize: "1rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.name}</h3>
+                                    </div>
+                                    <p style={{ fontSize: "0.75rem", opacity: 0.5 }}>{c.mobile_no}</p>
                                 </div>
                             </div>
                             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexShrink: 0 }}>
