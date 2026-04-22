@@ -159,11 +159,13 @@ export default function CustomerDetailsPage() {
                 </div>
 
                 {/* History Accordions */}
-                <h3 style={{ marginBottom: "1rem" }}>Collection History</h3>
-                <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                <h3 style={{ marginBottom: "1rem" }}>Loan History</h3>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
                     {allLoans.map((loan: any, lIndex: number) => {
-                        const isExpanded = expandedLoan === loan.id || (expandedLoan === null && lIndex === 0);
+                        const isExpanded = expandedLoan === loan.id;
                         const loanCollections = allCollections.filter((c: any) => c.loan_id === loan.id);
+                        const loanTotalCollected = loanCollections.reduce((sum: number, c: any) => sum + parseFloat(c.amount_collected), 0);
+                        const loanAmt = parseFloat(loan.loan_amount);
                         
                         let endDay = new Date();
                         if (loan.status === "closed") {
@@ -191,27 +193,45 @@ export default function CustomerDetailsPage() {
                         const reversedHistory = [...historyWithSums].reverse();
 
                         return (
-                            <div key={loan.id} className="card" style={{ padding: "0" }}>
+                            <div key={loan.id} className="card" style={{ padding: "0", border: isExpanded ? "1px solid var(--primary)" : "1px solid var(--border)", background: loan.status === "active" ? "rgba(var(--primary-rgb), 0.05)" : "inherit" }}>
                                 <div 
-                                    style={{ padding: "1rem", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", borderBottom: isExpanded ? "1px solid var(--border)" : "none" }}
+                                    style={{ padding: "1rem", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}
                                     onClick={() => setExpandedLoan(isExpanded ? null : loan.id)}
                                 >
-                                    <div>
-                                        <h4 style={{ margin: 0, fontSize: "1rem" }}>Loan #{allLoans.length - lIndex} {loan.status === 'active' ? '(Active)' : '(Closed)'}</h4>
-                                        <p style={{ margin: 0, fontSize: "0.75rem", opacity: 0.5 }}>{format(new Date(loan.start_date), "dd MMM yyyy")} - {loan.status === 'closed' ? "Closed" : "Present"}</p>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "1rem", minWidth: 0 }}>
+                                        <div style={{ 
+                                            width: "32px", height: "32px", borderRadius: "8px", 
+                                            background: loan.status === 'active' ? 'var(--primary)' : 'var(--input)',
+                                            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0
+                                        }}>
+                                            <span style={{ fontSize: "0.8rem", fontWeight: 800 }}>{allLoans.length - lIndex}</span>
+                                        </div>
+                                        <div style={{ minWidth: 0 }}>
+                                            <h4 style={{ margin: 0, fontSize: "0.95rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                                                Loan {loan.status === 'active' ? '(Active)' : '(Closed)'}
+                                                <span style={{ fontSize: "0.75rem", fontWeight: 400, opacity: 0.5 }}>₹{loanAmt.toLocaleString()}</span>
+                                            </h4>
+                                            <p style={{ margin: 0, fontSize: "0.7rem", opacity: 0.5 }}>{format(new Date(loan.start_date), "dd MMM yyyy")} - {loan.status === 'closed' ? format(new Date(endDay), "dd MMM yyyy") : "Present"}</p>
+                                        </div>
                                     </div>
-                                    <div style={{ opacity: 0.5 }}>{isExpanded ? "▲" : "▼"}</div>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                                        <div style={{ textAlign: "right" }}>
+                                            <p style={{ margin: 0, fontSize: "0.6rem", opacity: 0.5 }}>Collected</p>
+                                            <p style={{ margin: 0, fontSize: "0.9rem", fontWeight: 700, color: loanTotalCollected >= loanAmt ? "var(--success)" : "inherit" }}>₹{loanTotalCollected.toLocaleString()}</p>
+                                        </div>
+                                        <div style={{ opacity: 0.3 }}>{isExpanded ? "▲" : "▼"}</div>
+                                    </div>
                                 </div>
                                 
                                 {isExpanded && (
-                                    <div style={{ padding: "1rem", overflowX: "auto" }}>
+                                    <div style={{ padding: "0 1rem 1rem", overflowX: "auto", borderTop: "1px solid var(--border)" }}>
                                         <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                                            <thead style={{ opacity: 0.5, fontSize: "0.75rem" }}>
+                                            <thead style={{ opacity: 0.5, fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                                                 <tr>
-                                                    <th style={{ textAlign: "left", paddingBottom: "1rem", whiteSpace: "nowrap" }}>Date</th>
-                                                    <th style={{ textAlign: "center", paddingBottom: "1rem", whiteSpace: "nowrap" }}>Collected</th>
-                                                    <th style={{ textAlign: "right", paddingBottom: "1rem", whiteSpace: "nowrap" }}>Running Sum</th>
-                                                    <th style={{ textAlign: "right", paddingBottom: "1rem", whiteSpace: "nowrap" }}>Month Total</th>
+                                                    <th style={{ textAlign: "left", padding: "1rem 0 0.5rem", whiteSpace: "nowrap" }}>Date</th>
+                                                    <th style={{ textAlign: "center", padding: "1rem 0 0.5rem", whiteSpace: "nowrap" }}>Collected</th>
+                                                    <th style={{ textAlign: "right", padding: "1rem 0 0.5rem", whiteSpace: "nowrap" }}>Running Sum</th>
+                                                    <th style={{ textAlign: "right", padding: "1rem 0 0.5rem", whiteSpace: "nowrap" }}>Month End</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -226,7 +246,7 @@ export default function CustomerDetailsPage() {
                                                                 {row.coll ? (
                                                                     <span style={{ color: "var(--success)", fontWeight: 600 }}>₹{row.amt.toLocaleString()}</span>
                                                                 ) : (
-                                                                    <span style={{ opacity: 0.2 }}>-</span>
+                                                                    <span style={{ opacity: 0.1 }}>-</span>
                                                                 )}
                                                             </td>
                                                             <td style={{ textAlign: "right", opacity: 0.8 }}>₹{row.runningSum.toLocaleString()}</td>
@@ -238,7 +258,7 @@ export default function CustomerDetailsPage() {
                                                 })}
                                                 {reversedHistory.length === 0 && (
                                                     <tr>
-                                                        <td colSpan={4} style={{ textAlign: "center", padding: "1rem", opacity: 0.5 }}>No history yet.</td>
+                                                        <td colSpan={4} style={{ textAlign: "center", padding: "2rem", opacity: 0.5 }}>No collection records found for this loan.</td>
                                                     </tr>
                                                 )}
                                             </tbody>
