@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Search, Calendar as CalendarIcon, CheckCircle2, Circle, ChevronRight, Edit2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Search, Calendar as CalendarIcon, CheckCircle2, Circle, Edit2, Loader2, X } from "lucide-react";
 import { getCollectionStatus, recordCollection, closeLoan } from "@/db/actions";
 import { format } from "date-fns";
 
@@ -13,6 +13,7 @@ export default function CollectionPage() {
     const [amounts, setAmounts] = useState<Record<number, string>>({});
     const [saving, setSaving] = useState<number | null>(null);
     const [editingIds, setEditingIds] = useState<Set<number>>(new Set());
+    const inputRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
     useEffect(() => { fetchStatus(); }, [date, search]);
 
@@ -23,108 +24,202 @@ export default function CollectionPage() {
         setLoading(false);
     };
 
+    const startEditing = (item: any) => {
+        const next = new Set(editingIds);
+        next.add(item.loanId);
+        setEditingIds(next);
+        setAmounts(prev => ({ ...prev, [item.loanId]: item.isProcessed ? item.collectedAmount : "" }));
+        // Focus input after render
+        setTimeout(() => inputRefs.current[item.loanId]?.focus(), 50);
+    };
+
+    const cancelEditing = (loanId: number) => {
+        const next = new Set(editingIds);
+        next.delete(loanId);
+        setEditingIds(next);
+        setAmounts(prev => { const n = { ...prev }; delete n[loanId]; return n; });
+    };
+
     const handleEntry = async (item: any) => {
-        const amount = amounts[item.loanId] || item.amountToCollect;
-        if (!amount || parseFloat(amount) <= 0) return;
+        // Allow 0 — treat as "visited, nothing collected"
+        const rawAmount = amounts[item.loanId];
+        const amount = rawAmount !== undefined && rawAmount !== "" ? rawAmount : item.amountToCollect;
+        const numericAmount = parseFloat(amount);
+        if (isNaN(numericAmount) || numericAmount < 0) return;
+
         setSaving(item.loanId);
 
-        await recordCollection(item.loanId, date, amount);
+        try {
+            await recordCollection(item.loanId, date, amount);
 
-        // Re-fetch fresh total from server to be accurate
-        const freshData = await getCollectionStatus(date, search);
-        const freshItem = (freshData as any[]).find((r: any) => r.loanId === item.loanId);
-        const freshTotal = parseFloat(freshItem?.totalCollected || "0");
-        const loanAmt = parseFloat(item.loanAmount || "10000");
+            // Update local state immediately for responsiveness
+            const newEditing = new Set(editingIds);
+            newEditing.delete(item.loanId);
+            setEditingIds(newEditing);
+            setAmounts(prev => { const n = { ...prev }; delete n[item.loanId]; return n; });
+            setSaving(null);
 
-        setSaving(null);
-        setAmounts(prev => { const n = { ...prev }; delete n[item.loanId]; return n; });
-        const newEditing = new Set(editingIds);
-        newEditing.delete(item.loanId);
-        setEditingIds(newEditing);
+            // Fetch fresh data after save
+            const freshData = await getCollectionStatus(date, search);
+            setCustomers(freshData as any[]);
 
-        if (freshTotal >= loanAmt) {
-            if (window.confirm(`✅ Total collected ₹${freshTotal.toLocaleString()} has reached the loan amount ₹${loanAmt.toLocaleString()}.\n\nClose this loan now?`)) {
-                await closeLoan(item.loanId);
+            // Check if loan is fully paid
+            const freshItem = (freshData as any[]).find((r: any) => r.loanId === item.loanId);
+            if (freshItem) {
+                const freshTotal = parseFloat(freshItem.totalCollected || "0");
+                const loanAmt = parseFloat(item.loanAmount || "0");
+                if (loanAmt > 0 && freshTotal >= loanAmt) {
+                    if (window.confirm(`✅ Full amount collected!\n\nTotal: ₹${freshTotal.toLocaleString()} / ₹${loanAmt.toLocaleString()}\n\nClose this loan now?`)) {
+                        await closeLoan(item.loanId);
+                        fetchStatus();
+                    }
+                }
             }
+        } catch (e) {
+            setSaving(null);
+            alert("Failed to save. Please try again.");
         }
-
-        fetchStatus();
     };
+
+    const processedCount = customers.filter(c => c.isProcessed && !editingIds.has(c.loanId)).length;
+    const totalCount = customers.length;
 
     return (
         <div className="animate-fade-in">
             {/* Header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", flexWrap: "wrap", gap: "1rem" }}>
-                <h1>Collection</h1>
+                <div>
+                    <h1 style={{ marginBottom: "0.2rem" }}>Collection</h1>
+                    {!loading && totalCount > 0 && (
+                        <p style={{ fontSize: "0.8rem", opacity: 0.5 }}>
+                            {processedCount}/{totalCount} collected
+                        </p>
+                    )}
+                </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "var(--input)", border: "1px solid var(--border)", borderRadius: "12px", padding: "0.6rem 0.9rem" }}>
                     <CalendarIcon size={14} style={{ opacity: 0.5 }} />
                     <input type="date" value={date} onChange={e => setDate(e.target.value)}
-                        style={{ border: "none", background: "none", outline: "none", color: "white", fontSize: "0.9rem", width: "120px" }} />
+                        style={{ border: "none", background: "none", outline: "none", color: "white", fontSize: "0.9rem", width: "130px" }} />
                 </div>
             </div>
+
+            {/* Progress bar */}
+            {!loading && totalCount > 0 && (
+                <div style={{ height: "4px", background: "var(--border)", borderRadius: "4px", marginBottom: "1.5rem", overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${(processedCount / totalCount) * 100}%`, background: "var(--success)", borderRadius: "4px", transition: "width 0.4s ease" }} />
+                </div>
+            )}
 
             {/* Search */}
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", background: "var(--input)", border: "1px solid var(--border)", borderRadius: "12px", padding: "0.6rem 1rem", marginBottom: "1.5rem" }}>
                 <Search size={18} style={{ opacity: 0.4, flexShrink: 0 }} />
-                <input type="text" placeholder="Search customer…" value={search} onChange={e => setSearch(e.target.value)}
+                <input type="text" placeholder="Search by name or ID…" value={search} onChange={e => setSearch(e.target.value)}
                     style={{ border: "none", background: "none", outline: "none", color: "white", width: "100%", fontSize: "0.95rem" }} />
+                {search && (
+                    <button onClick={() => setSearch("")} style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                        <X size={16} style={{ opacity: 0.4 }} />
+                    </button>
+                )}
             </div>
 
             {/* List */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
                 {loading ? (
-                    <p style={{ opacity: 0.5, textAlign: "center", padding: "2rem" }}>Loading list…</p>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem", padding: "3rem", opacity: 0.5 }}>
+                        <Loader2 size={20} style={{ animation: "spin 1s linear infinite" }} />
+                        <span>Loading list…</span>
+                    </div>
                 ) : customers.length === 0 ? (
                     <div className="card" style={{ textAlign: "center", padding: "3rem", opacity: 0.5 }}>
-                        <p>No active collections found.</p>
+                        <p>No active loans found for this date.</p>
                     </div>
                 ) : customers.map((item: any) => {
-                    const isActuallyProcessed = item.isProcessed && !editingIds.has(item.loanId);
+                    const isEditing = editingIds.has(item.loanId);
+                    const isDone = item.isProcessed && !isEditing;
+                    const isSavingThis = saving === item.loanId;
 
                     return (
-                        <div key={item.loanId} className="card" style={{ borderLeft: `4px solid ${isActuallyProcessed ? "var(--success)" : "var(--primary)"}`, padding: "0.75rem 1rem" }}>
-                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem", flexWrap: "nowrap" }}>
-                                <div style={{ minWidth: 0, flex: 1 }}>
-                                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                                        {isActuallyProcessed ? <CheckCircle2 size={14} color="var(--success)" /> : <Circle size={14} style={{ opacity: 0.3 }} />}
-                                        <h3 style={{ fontSize: "1.1rem", fontWeight: 800, color: "var(--primary)" }}>{item.ownId || `#${item.cust_id}`}</h3>
-                                        <span style={{ fontSize: "0.95rem", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.name}</span>
+                        <div key={item.loanId} className="card" style={{
+                            borderLeft: `4px solid ${isDone ? "var(--success)" : "var(--primary)"}`,
+                            padding: "0.85rem 1rem",
+                            opacity: isSavingThis ? 0.7 : 1,
+                            transition: "opacity 0.2s"
+                        }}>
+                            {/* Top row: ID + Name + Status icon */}
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.6rem" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", minWidth: 0, flex: 1 }}>
+                                    {isDone
+                                        ? <CheckCircle2 size={16} color="var(--success)" style={{ flexShrink: 0 }} />
+                                        : <Circle size={16} style={{ opacity: 0.25, flexShrink: 0 }} />
+                                    }
+                                    <span style={{ fontSize: "1rem", fontWeight: 800, color: "var(--primary)", flexShrink: 0 }}>
+                                        {item.ownId || `#${item.loanId}`}
+                                    </span>
+                                    <span style={{ fontSize: "0.9rem", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                        {item.name}
+                                    </span>
+                                </div>
+                                {isDone && (
+                                    <button onClick={() => startEditing(item)} style={{ background: "var(--input)", border: "none", borderRadius: "8px", padding: "0.3rem 0.5rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.3rem", color: "rgba(255,255,255,0.6)", fontSize: "0.75rem", flexShrink: 0 }}>
+                                        <Edit2 size={12} /> Edit
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Bottom row: Due amount + input OR collected amount */}
+                            {isDone ? (
+                                /* Already collected */
+                                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingLeft: "1.5rem" }}>
+                                    <span style={{ fontSize: "0.75rem", opacity: 0.5 }}>Collected today</span>
+                                    <span style={{ fontWeight: 700, color: "var(--success)", fontSize: "1rem" }}>
+                                        ₹{parseFloat(item.collectedAmount).toLocaleString()}
+                                    </span>
+                                </div>
+                            ) : (
+                                /* Entry row */
+                                <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", paddingLeft: "1.5rem" }}>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <span style={{ fontSize: "0.7rem", opacity: 0.5 }}>Daily due</span>
+                                        <div style={{ fontSize: "0.85rem", fontWeight: 600 }}>₹{parseFloat(item.amountToCollect).toLocaleString()}</div>
+                                    </div>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexShrink: 0 }}>
+                                        <input
+                                            ref={el => { inputRefs.current[item.loanId] = el; }}
+                                            type="number"
+                                            inputMode="numeric"
+                                            className="input"
+                                            placeholder={item.amountToCollect}
+                                            value={amounts[item.loanId] ?? ""}
+                                            min="0"
+                                            onChange={e => setAmounts(prev => ({ ...prev, [item.loanId]: e.target.value }))}
+                                            onKeyDown={e => e.key === "Enter" && handleEntry(item)}
+                                            style={{ width: "80px", padding: "0.5rem 0.4rem", textAlign: "center", fontSize: "0.95rem" }}
+                                        />
+                                        {isEditing && (
+                                            <button
+                                                onClick={() => cancelEditing(item.loanId)}
+                                                style={{ background: "var(--input)", border: "none", borderRadius: "8px", padding: "0.5rem", cursor: "pointer", color: "rgba(255,255,255,0.5)", display: "flex" }}>
+                                                <X size={16} />
+                                            </button>
+                                        )}
+                                        <button
+                                            className="btn btn-primary"
+                                            style={{ padding: "0.5rem 0.9rem", fontSize: "0.85rem", fontWeight: 600 }}
+                                            disabled={isSavingThis}
+                                            onClick={() => handleEntry(item)}>
+                                            {isSavingThis ? <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /> : "Save"}
+                                        </button>
                                     </div>
                                 </div>
-
-                                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexShrink: 0 }}>
-                                    {isActuallyProcessed ? (
-                                        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-                                            <div style={{ textAlign: "right" }}>
-                                                <p style={{ fontSize: "0.6rem", opacity: 0.5 }}>Collected</p>
-                                                <p style={{ fontWeight: 700, color: "var(--success)", fontSize: "0.95rem" }}>₹{parseFloat(item.collectedAmount).toLocaleString()}</p>
-                                            </div>
-                                            <button className="btn" onClick={() => {
-                                                const next = new Set(editingIds); next.add(item.loanId); setEditingIds(next);
-                                                setAmounts(prev => ({ ...prev, [item.loanId]: item.collectedAmount }));
-                                            }} style={{ background: "var(--input)", padding: "0.4rem", borderRadius: "8px" }}>
-                                                <Edit2 size={14} style={{ opacity: 0.6 }} />
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                                            <div style={{ textAlign: "right" }}>
-                                                <p style={{ fontSize: "0.6rem", opacity: 0.5 }}>Due</p>
-                                                <p style={{ fontWeight: 600, fontSize: "0.9rem" }}>₹{parseFloat(item.amountToCollect).toLocaleString()}</p>
-                                            </div>
-                                            <input type="number" inputMode="numeric" className="input" placeholder={item.amountToCollect} value={amounts[item.loanId] || ""} onChange={e => setAmounts(prev => ({ ...prev, [item.loanId]: e.target.value }))}
-                                                style={{ width: "70px", padding: "0.45rem", textAlign: "center", fontSize: "0.9rem" }} />
-                                            <button className="btn btn-primary" style={{ padding: "0.45rem" }} onClick={() => handleEntry(item)}>
-                                                <ChevronRight size={18} />
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
+                            )}
                         </div>
                     );
                 })}
             </div>
+
+            <style>{`
+                @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+            `}</style>
         </div>
     );
 }
