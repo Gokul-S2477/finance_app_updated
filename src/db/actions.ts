@@ -109,28 +109,26 @@ export async function updateCustomer(id: number, data: any) {
       const now = new Date();
       const diffDays = Math.ceil(Math.abs(now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
 
-      // Allow updating start date always, but amount only within 2 days
-      let updateSql = "";
-      const updates = [];
-      
+      // 2a. Update Start/End Dates (Always allowed for active loan)
       if (startDate) {
         const start = new Date(startDate);
         const end = addDays(start, 100);
-        updates.push(sql`start_date = ${start.toISOString().split("T")[0]}`);
-        updates.push(sql`end_date = ${end.toISOString().split("T")[0]}`);
+        await sql`
+          UPDATE loans 
+          SET start_date = ${start.toISOString().split("T")[0]}, 
+              end_date = ${end.toISOString().split("T")[0]}
+          WHERE id = ${activeLoan.id}
+        `;
       }
 
+      // 2b. Update Amount (Only within 2 days)
       if (loanAmount && diffDays <= 2) {
         const amount = parseFloat(loanAmount);
         const givenAmount = amount * 0.88;
-        updates.push(sql`loan_amount = ${amount}`);
-        updates.push(sql`given_amount = ${givenAmount}`);
-      }
-
-      if (updates.length > 0) {
         await sql`
           UPDATE loans 
-          SET ${updates.reduce((acc, curr, i) => i === 0 ? curr : sql`${acc}, ${curr}`)}
+          SET loan_amount = ${amount}, 
+              given_amount = ${givenAmount}
           WHERE id = ${activeLoan.id}
         `;
       }

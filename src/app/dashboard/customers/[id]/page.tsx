@@ -168,32 +168,43 @@ export default function CustomerDetailsPage() {
                         const loanTotalCollected = loanCollections.reduce((sum: number, c: any) => sum + parseFloat(c.amount_collected), 0);
                         const loanAmt = parseFloat(loan.loan_amount);
                         
-                        let endDay = new Date();
-                        const lastCollDate = loanCollections.length > 0 
-                            ? new Date(Math.max(...loanCollections.map((c: any) => new Date(c.payment_date).getTime())))
-                            : new Date(loan.start_date);
+                        // Robust date handling to prevent 500 errors
+                        const parseSafeDate = (d: any) => {
+                            const date = new Date(d);
+                            return isNaN(date.getTime()) ? null : date;
+                        };
 
+                        const loanStart = parseSafeDate(loan.start_date) || new Date();
+                        const loanEnd = parseSafeDate(loan.end_date) || addDays(loanStart, 100);
+                        
+                        let lastCollDate = loanStart;
+                        if (loanCollections.length > 0) {
+                            const times = loanCollections.map((c: any) => new Date(c.payment_date).getTime()).filter(t => !isNaN(t));
+                            if (times.length > 0) lastCollDate = new Date(Math.max(...times));
+                        }
+
+                        let endDay = new Date();
                         if (loan.status === "closed") {
-                            const closedDate = loan.closed_date ? new Date(loan.closed_date) : new Date(loan.end_date);
-                            // Set endDay to the later of closedDate or last collection date to ensure all data shows
+                            const closedDate = parseSafeDate(loan.closed_date) || loanEnd;
                             endDay = lastCollDate > closedDate ? lastCollDate : closedDate;
                         } else {
                             const today = new Date();
-                            const loanEnd = new Date(loan.end_date);
                             endDay = today > loanEnd ? today : loanEnd;
                         }
                         
-                        // Safety check in case dates are invalid or start > end
+                        // Ensure start is not after end
+                        const safeStart = loanStart;
+                        const safeEnd = endDay < safeStart ? safeStart : endDay;
+
                         let daysForLoan = [];
                         try {
-                             daysForLoan = eachDayOfInterval({ start: new Date(loan.start_date), end: endDay });
+                             daysForLoan = eachDayOfInterval({ start: safeStart, end: safeEnd });
                         } catch(e) {
-                             daysForLoan = [new Date(loan.start_date)];
+                             daysForLoan = [safeStart];
                         }
 
                         let runningSum = 0;
                         const historyWithSums = daysForLoan.map(day => {
-                            // Sum all collections for this day (in case of multiple entries)
                             const dayColls = loanCollections.filter((c: any) => isSameDay(new Date(c.payment_date), day));
                             const amt = dayColls.reduce((sum: number, c: any) => sum + parseFloat(c.amount_collected), 0);
                             runningSum += amt;
