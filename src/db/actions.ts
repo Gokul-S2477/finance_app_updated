@@ -138,9 +138,10 @@ export async function getCustomerDetails(id: number) {
 
   let allCollections: any[] = [];
   if (allLoans.length > 0) {
+    const loanIds = allLoans.map((l: any) => l.id);
     allCollections = await sql`
       SELECT * FROM collections 
-      WHERE loan_id IN (${allLoans.map((l: any) => l.id).join(',')}) 
+      WHERE loan_id = ANY(${loanIds}::int[])
       ORDER BY payment_date DESC
     `;
   }

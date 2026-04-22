@@ -16,6 +16,7 @@ export default function CustomerDetailsPage() {
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [editing, setEditing] = useState(false);
     const [editForm, setEditForm] = useState<any>(null);
+    const [expandedLoan, setExpandedLoan] = useState<number | null>(null);
 
     useEffect(() => { fetchData(); }, [id]);
 
@@ -34,6 +35,7 @@ export default function CustomerDetailsPage() {
                 dob: d.customer.dob ? format(new Date(d.customer.dob), "yyyy-MM-dd") : "",
                 loanAmount: d.activeLoan ? d.activeLoan.loan_amount.toString() : ""
             });
+            setExpandedLoan(d.activeLoan ? d.activeLoan.id : null);
         }
         setLoading(false);
     };
@@ -62,7 +64,6 @@ export default function CustomerDetailsPage() {
     const pendingAmount = loanAmount - totalCollected;
     const remainingDays = activeLoan ? Math.max(0, Math.ceil((new Date(activeLoan.end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))) : 0;
 
-    const [expandedLoan, setExpandedLoan] = useState<number | null>(activeLoan ? activeLoan.id : null);
 
     return (
         <>
