@@ -148,7 +148,7 @@ export async function getCustomerDetails(id: number) {
   const allLoans = await sql`
     SELECT * FROM loans WHERE customer_id = ${id} ORDER BY created_at DESC
   `;
-  const activeLoan = allLoans.find((l: any) => l.status === 'active') || allLoans[0] || null;
+  const activeLoan = allLoans.find((l: any) => l.status === 'active') || null;
 
   let allCollections: any[] = [];
   if (allLoans.length > 0) {
