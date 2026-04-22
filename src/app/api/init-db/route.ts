@@ -9,13 +9,14 @@ export async function GET() {
     await sql`
       CREATE TABLE IF NOT EXISTS customers (
         id SERIAL PRIMARY KEY,
-        own_id TEXT,
+        own_id TEXT NOT NULL,
         name TEXT NOT NULL,
         address TEXT NOT NULL,
-        id_proof TEXT NOT NULL,
-        id_number TEXT NOT NULL,
-        dob DATE NOT NULL,
+        id_proof TEXT,
+        id_number TEXT,
+        dob DATE,
         mobile_no TEXT NOT NULL,
+        mobile_alt TEXT,
         status BOOLEAN DEFAULT TRUE,
         is_deleted BOOLEAN DEFAULT FALSE,
         deleted_at TIMESTAMP,
@@ -54,6 +55,7 @@ export async function GET() {
     try { await sql`ALTER TABLE loans ADD COLUMN IF NOT EXISTS closed_date TIMESTAMP`; } catch (_) {}
     try { await sql`ALTER TABLE customers ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE`; } catch (_) {}
     try { await sql`ALTER TABLE customers ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP`; } catch (_) {}
+    try { await sql`ALTER TABLE customers ADD COLUMN IF NOT EXISTS mobile_alt TEXT`; } catch (_) {}
 
     // ADD UNIQUE CONSTRAINT for upserts (loan_id + payment_date)
     try {

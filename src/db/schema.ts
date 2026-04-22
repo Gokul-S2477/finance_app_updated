@@ -2,14 +2,15 @@ import { pgTable, serial, text, integer, date, boolean, decimal, timestamp } fro
 
 export const customers = pgTable("customers", {
     id: serial("id").primaryKey(),
-    ownId: text("own_id").unique(), // Manual ID
+    ownId: text("own_id").notNull().unique(), // DL Number — mandatory primary identifier
     name: text("name").notNull(),
     address: text("address").notNull(),
-    idProof: text("id_proof").notNull(), // Aadhar, PAN
-    idNumber: text("id_number").notNull(),
-    dob: date("dob").notNull(),
+    idProof: text("id_proof"),               // Optional
+    idNumber: text("id_number"),             // Optional
+    dob: date("dob"),                        // Optional
     mobile: text("mobile_no").notNull(),
-    status: boolean("status").default(true), // active/inactive
+    mobileAlt: text("mobile_alt"),           // Alternate phone number (optional)
+    status: boolean("status").default(true),
     isDeleted: boolean("is_deleted").default(false),
     deletedAt: timestamp("deleted_at"),
     createdAt: timestamp("created_at").defaultNow(),

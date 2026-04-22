@@ -12,7 +12,7 @@ export default function CustomersPage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
-    const blankForm = { ownId: "", name: "", address: "", idProof: "Aadhar", idNumber: "", dob: "", mobile: "", loanAmount: "10000", startDate: format(addDays(new Date(), 1), "yyyy-MM-dd") };
+    const blankForm = { ownId: "", name: "", address: "", idProof: "", idNumber: "", dob: "", mobile: "", mobileAlt: "", loanAmount: "10000", startDate: format(addDays(new Date(), 1), "yyyy-MM-dd") };
     const [form, setForm] = useState(blankForm);
     const updateField = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
 
@@ -107,13 +107,18 @@ export default function CustomersPage() {
 
                         <div className="responsive-grid cols-2">
                             <div>
-                                <label>OWN ID (OPTIONAL)</label>
-                                <input type="text" className="input" value={form.ownId} onChange={e => updateField("ownId", e.target.value)} placeholder="ID" />
+                                <label>DL NUMBER *</label>
+                                <input type="text" className="input" required value={form.ownId} onChange={e => updateField("ownId", e.target.value)} placeholder="Driving Licence No." />
                             </div>
                             <div>
                                 <label>MOBILE NUMBER *</label>
                                 <input type="tel" className="input" required value={form.mobile} onChange={e => updateField("mobile", e.target.value)} placeholder="10-digit number" />
                             </div>
+                        </div>
+
+                        <div>
+                            <label>ALTERNATE MOBILE (OPTIONAL)</label>
+                            <input type="tel" className="input" value={form.mobileAlt} onChange={e => updateField("mobileAlt", e.target.value)} placeholder="Alternate number" />
                         </div>
 
                         <div>
@@ -123,22 +128,23 @@ export default function CustomersPage() {
 
                         <div className="responsive-grid cols-2">
                             <div>
-                                <label>ID PROOF *</label>
+                                <label>ID PROOF</label>
                                 <select className="input" value={form.idProof} onChange={e => updateField("idProof", e.target.value)}>
+                                    <option value="">-- Select (optional) --</option>
                                     <option value="Aadhar">Aadhar</option>
                                     <option value="PAN">PAN</option>
                                 </select>
                             </div>
                             <div>
-                                <label>ID NUMBER *</label>
-                                <input type="text" className="input" required value={form.idNumber} onChange={e => updateField("idNumber", e.target.value)} placeholder="ID number" />
+                                <label>ID NUMBER</label>
+                                <input type="text" className="input" value={form.idNumber} onChange={e => updateField("idNumber", e.target.value)} placeholder="Optional" />
                             </div>
                         </div>
 
                         <div className="responsive-grid cols-2">
                             <div>
-                                <label>DATE OF BIRTH *</label>
-                                <input type="date" className="input" required value={form.dob} onChange={e => updateField("dob", e.target.value)} />
+                                <label>DATE OF BIRTH</label>
+                                <input type="date" className="input" value={form.dob} onChange={e => updateField("dob", e.target.value)} />
                             </div>
                             <div>
                                 <label>LOAN AMOUNT (₹) *</label>

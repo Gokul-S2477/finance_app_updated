@@ -24,7 +24,11 @@ export async function getDeletedCustomers() {
 }
 
 export async function createCustomer(data: any) {
-  const { loanAmount = "10000", startDate: formStart, ownId, name, address, idProof, idNumber, dob, mobile } = data;
+  const { loanAmount = "10000", startDate: formStart, ownId, name, address, idProof, idNumber, dob, mobile, mobileAlt } = data;
+
+  if (!ownId || ownId.trim() === "") {
+    throw new Error("DL Number is required.");
+  }
 
   if (ownId) {
     const existing = await sql`SELECT * FROM customers WHERE own_id = ${ownId}`;
@@ -42,15 +46,24 @@ export async function createCustomer(data: any) {
         `;
         return existing[0];
       } else {
-        throw new Error("Customer with this ID already exists.");
+        throw new Error("Customer with this DL Number already exists.");
       }
     }
   }
 
   // 1. Create Customer
   const rows = await sql`
-    INSERT INTO customers (own_id, name, address, id_proof, id_number, dob, mobile_no)
-    VALUES (${ownId || null}, ${name}, ${address}, ${idProof}, ${idNumber}, ${dob}, ${mobile})
+    INSERT INTO customers (own_id, name, address, id_proof, id_number, dob, mobile_no, mobile_alt)
+    VALUES (
+      ${ownId},
+      ${name},
+      ${address},
+      ${idProof || null},
+      ${idNumber || null},
+      ${dob || null},
+      ${mobile},
+      ${mobileAlt || null}
+    )
     RETURNING *
   `;
   const customer = rows[0];
@@ -70,7 +83,7 @@ export async function createCustomer(data: any) {
 }
 
 export async function updateCustomer(id: number, data: any) {
-  const { ownId, name, address, idProof, idNumber, dob, mobile, loanAmount } = data;
+  const { ownId, name, address, idProof, idNumber, dob, mobile, mobileAlt, loanAmount } = data;
 
   // 1. Update Customer Profile
   await sql`
@@ -81,7 +94,8 @@ export async function updateCustomer(id: number, data: any) {
         id_proof = ${idProof}, 
         id_number = ${idNumber}, 
         dob = ${dob}, 
-        mobile_no = ${mobile}
+        mobile_no = ${mobile},
+        mobile_alt = ${mobileAlt || null}
     WHERE id = ${id}
   `;
 

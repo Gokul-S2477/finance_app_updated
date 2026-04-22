@@ -29,9 +29,10 @@ export default function CustomerDetailsPage() {
                 name: d.customer.name,
                 ownId: d.customer.own_id || "",
                 mobile: d.customer.mobile_no,
+                mobileAlt: d.customer.mobile_alt || "",
                 address: d.customer.address,
-                idProof: d.customer.id_proof,
-                idNumber: d.customer.id_number,
+                idProof: d.customer.id_proof || "",
+                idNumber: d.customer.id_number || "",
                 dob: d.customer.dob ? format(new Date(d.customer.dob), "yyyy-MM-dd") : "",
                 loanAmount: d.activeLoan ? d.activeLoan.loan_amount.toString() : ""
             });
@@ -115,9 +116,11 @@ export default function CustomerDetailsPage() {
                             </div>
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", fontSize: "0.9rem" }}>
-                            <div style={{ display: "flex", gap: "0.75rem" }}><Phone size={16} style={{ opacity: 0.4 }} /> {customer.mobile_no}</div>
+                            <div style={{ display: "flex", gap: "0.75rem" }}><Phone size={16} style={{ opacity: 0.4 }} /> {customer.mobile_no} {customer.mobile_alt && `/ ${customer.mobile_alt}`}</div>
                             <div style={{ display: "flex", gap: "0.75rem" }}><MapPin size={16} style={{ opacity: 0.4 }} /> {customer.address}</div>
-                            <div style={{ display: "flex", gap: "0.75rem" }}><CreditCard size={16} style={{ opacity: 0.4 }} /> {customer.id_number} ({customer.id_proof})</div>
+                            {(customer.id_number || customer.id_proof) && (
+                                <div style={{ display: "flex", gap: "0.75rem" }}><CreditCard size={16} style={{ opacity: 0.4 }} /> {customer.id_number} {customer.id_proof && `(${customer.id_proof})`}</div>
+                            )}
                         </div>
                     </div>
 
@@ -258,13 +261,14 @@ export default function CustomerDetailsPage() {
                     <form onSubmit={handleUpdate} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
                         <div><label>NAME</label><input type="text" className="input" required value={editForm?.name || ""} onChange={e => setEditForm({ ...editForm, name: e.target.value })} /></div>
                         <div className="responsive-grid cols-2">
-                            <div><label>OWN ID</label><input type="text" className="input" value={editForm?.ownId || ""} onChange={e => setEditForm({ ...editForm, ownId: e.target.value })} /></div>
+                            <div><label>DL NUMBER *</label><input type="text" className="input" required value={editForm?.ownId || ""} onChange={e => setEditForm({ ...editForm, ownId: e.target.value })} placeholder="Driving Licence No." /></div>
                             <div><label>MOBILE</label><input type="tel" className="input" required value={editForm?.mobile || ""} onChange={e => setEditForm({ ...editForm, mobile: e.target.value })} /></div>
                         </div>
+                        <div><label>ALTERNATE MOBILE</label><input type="tel" className="input" value={editForm?.mobileAlt || ""} onChange={e => setEditForm({ ...editForm, mobileAlt: e.target.value })} placeholder="Alternate number (optional)" /></div>
                         <div><label>ADDRESS</label><textarea className="input" required value={editForm?.address || ""} onChange={e => setEditForm({ ...editForm, address: e.target.value })} rows={2} /></div>
                         <div className="responsive-grid cols-2">
-                            <div><label>ID PROOF</label><select className="input" value={editForm?.idProof || "Aadhar"} onChange={e => setEditForm({ ...editForm, idProof: e.target.value })}><option value="Aadhar">Aadhar</option><option value="PAN">PAN</option></select></div>
-                            <div><label>ID NUMBER</label><input type="text" className="input" required value={editForm?.idNumber || ""} onChange={e => setEditForm({ ...editForm, idNumber: e.target.value })} /></div>
+                            <div><label>ID PROOF</label><select className="input" value={editForm?.idProof || ""} onChange={e => setEditForm({ ...editForm, idProof: e.target.value })}><option value="">-- Optional --</option><option value="Aadhar">Aadhar</option><option value="PAN">PAN</option></select></div>
+                            <div><label>ID NUMBER</label><input type="text" className="input" value={editForm?.idNumber || ""} onChange={e => setEditForm({ ...editForm, idNumber: e.target.value })} placeholder="Optional" /></div>
                         </div>
                         <div><label>LOAN AMOUNT (Limit: 2 days)</label><input type="number" className="input" disabled={!canEditLoanAmount} value={editForm?.loanAmount || ""} onChange={e => setEditForm({ ...editForm, loanAmount: e.target.value })} style={{ opacity: canEditLoanAmount ? 1 : 0.5 }} /></div>
                         <button type="submit" className="btn btn-primary" style={{ padding: "1rem" }} disabled={editing}>{editing ? "Saving..." : "Update ✓"}</button>
