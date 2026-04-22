@@ -6,7 +6,6 @@ export const metadata: Metadata = {
     description: "High Performance Finance Management",
     manifest: "/manifest.json",
     appleWebApp: {
-        capable: true,
         statusBarStyle: "black-translucent",
         title: "Ganapathi",
     },
@@ -29,6 +28,8 @@ export default function RootLayout({
         <html lang="en">
             <head>
                 <link rel="icon" href="/icon.png" />
+                <meta name="mobile-web-app-capable" content="yes" />
+                <meta name="apple-mobile-web-app-capable" content="yes" />
             </head>
             <body>
                 {children}

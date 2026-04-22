@@ -251,17 +251,17 @@ export default function CustomerDetailsPage() {
                         <button onClick={() => setIsEditOpen(false)} style={{ background: "none", border: "none", color: "white" }}><XCircle size={24} /></button>
                     </div>
                     <form onSubmit={handleUpdate} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-                        <div><label>NAME</label><input type="text" className="input" required value={editForm?.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} /></div>
+                        <div><label>NAME</label><input type="text" className="input" required value={editForm?.name || ""} onChange={e => setEditForm({ ...editForm, name: e.target.value })} /></div>
                         <div className="responsive-grid cols-2">
-                            <div><label>OWN ID</label><input type="text" className="input" value={editForm?.ownId} onChange={e => setEditForm({ ...editForm, ownId: e.target.value })} /></div>
-                            <div><label>MOBILE</label><input type="tel" className="input" required value={editForm?.mobile} onChange={e => setEditForm({ ...editForm, mobile: e.target.value })} /></div>
+                            <div><label>OWN ID</label><input type="text" className="input" value={editForm?.ownId || ""} onChange={e => setEditForm({ ...editForm, ownId: e.target.value })} /></div>
+                            <div><label>MOBILE</label><input type="tel" className="input" required value={editForm?.mobile || ""} onChange={e => setEditForm({ ...editForm, mobile: e.target.value })} /></div>
                         </div>
-                        <div><label>ADDRESS</label><textarea className="input" required value={editForm?.address} onChange={e => setEditForm({ ...editForm, address: e.target.value })} rows={2} /></div>
+                        <div><label>ADDRESS</label><textarea className="input" required value={editForm?.address || ""} onChange={e => setEditForm({ ...editForm, address: e.target.value })} rows={2} /></div>
                         <div className="responsive-grid cols-2">
-                            <div><label>ID PROOF</label><select className="input" value={editForm?.idProof} onChange={e => setEditForm({ ...editForm, idProof: e.target.value })}><option value="Aadhar">Aadhar</option><option value="PAN">PAN</option></select></div>
-                            <div><label>ID NUMBER</label><input type="text" className="input" required value={editForm?.idNumber} onChange={e => setEditForm({ ...editForm, idNumber: e.target.value })} /></div>
+                            <div><label>ID PROOF</label><select className="input" value={editForm?.idProof || "Aadhar"} onChange={e => setEditForm({ ...editForm, idProof: e.target.value })}><option value="Aadhar">Aadhar</option><option value="PAN">PAN</option></select></div>
+                            <div><label>ID NUMBER</label><input type="text" className="input" required value={editForm?.idNumber || ""} onChange={e => setEditForm({ ...editForm, idNumber: e.target.value })} /></div>
                         </div>
-                        <div><label>LOAN AMOUNT (Limit: 2 days)</label><input type="number" className="input" disabled={!canEditLoanAmount} value={editForm?.loanAmount} onChange={e => setEditForm({ ...editForm, loanAmount: e.target.value })} style={{ opacity: canEditLoanAmount ? 1 : 0.5 }} /></div>
+                        <div><label>LOAN AMOUNT (Limit: 2 days)</label><input type="number" className="input" disabled={!canEditLoanAmount} value={editForm?.loanAmount || ""} onChange={e => setEditForm({ ...editForm, loanAmount: e.target.value })} style={{ opacity: canEditLoanAmount ? 1 : 0.5 }} /></div>
                         <button type="submit" className="btn btn-primary" style={{ padding: "1rem" }} disabled={editing}>{editing ? "Saving..." : "Update ✓"}</button>
                     </form>
                 </div>
