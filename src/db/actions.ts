@@ -40,8 +40,6 @@ export async function createCustomer(data: any) {
     throw new Error("DL Number is required.");
   }
 
-  // ... (rest of the logic wrapped in try-catch if needed, but let's keep it clean for now)
-  // I will just wrap the final SQL calls or the whole thing
   try {
     if (ownId) {
         const existing = await sql`SELECT * FROM customers WHERE own_id = ${ownId}`;
@@ -227,7 +225,7 @@ export async function addLedgerEntry(data: { amount: string, type: string, descr
 export async function getFinancialSummary() {
   try {
     const collections = await sql`SELECT COALESCE(SUM(amount_collected), 0) as total FROM collections`;
-    let ledgerEntries = [];
+    let ledgerEntries: any[] = [];
     try {
         ledgerEntries = await sql`SELECT type, SUM(amount) as total FROM ledger GROUP BY type`;
     } catch (ee) {
