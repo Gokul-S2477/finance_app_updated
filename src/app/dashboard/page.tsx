@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Users, TrendingUp, DollarSign, Calendar, ArrowRight, Wallet, PieChart as PieIcon, BarChart3, Clock } from "lucide-react";
+import { Users, TrendingUp, DollarSign, Calendar, ArrowRight, Wallet, PieChart as PieIcon, BarChart3, Clock, AlertCircle, ChevronRight } from "lucide-react";
 import { getDashboardStats } from "@/db/dashboard";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, AreaChart, Area } from "recharts";
+import { format } from "date-fns";
 import Link from "next/link";
 
 export default function Dashboard() {
@@ -155,60 +156,57 @@ export default function Dashboard() {
                         </ResponsiveContainer>
                     </div>
                 </div>
+            </div>
 
-                {/* Status Distribution */}
-                <div className="card" style={{ padding: "2rem" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
-                        <h3 style={{ fontSize: "1.1rem", fontWeight: 700 }}>Loan Status</h3>
-                        <PieIcon size={20} style={{ opacity: 0.3 }} />
-                    </div>
-                    <div style={{ width: "100%", height: 300, position: "relative" }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie data={stats?.statusDistribution} innerRadius={80} outerRadius={110} paddingAngle={5} dataKey="value">
-                                    {stats?.statusDistribution.map((entry: any, index: number) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                    ))}
-                                </Pie>
-                                <Tooltip />
-                            </PieChart>
-                        </ResponsiveContainer>
-                        <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
-                            <span style={{ fontSize: "1.5rem", fontWeight: 800 }}>{stats?.activeLoans + (stats?.statusDistribution.find((s:any)=>s.name==='Closed')?.value || 0)}</span>
-                            <span style={{ fontSize: "0.7rem", opacity: 0.5 }}>Total Loans</span>
+            {/* Ending Soon List */}
+            <div style={{ marginBottom: "2.5rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                        <div style={{ padding: "8px", borderRadius: "10px", background: "rgba(239, 68, 68, 0.1)", color: "var(--error)" }}>
+                            <AlertCircle size={20} />
                         </div>
+                        <h3 style={{ fontSize: "1.25rem", fontWeight: 700 }}>Maturing Accounts (Ending Soon)</h3>
                     </div>
+                    <span style={{ fontSize: "0.85rem", opacity: 0.5 }}>Top 10 upcoming</span>
                 </div>
 
-                {/* Top Borrowers */}
-                <div className="card" style={{ padding: "2rem" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
-                        <h3 style={{ fontSize: "1.1rem", fontWeight: 700 }}>Top 5 Borrowers</h3>
-                        <Users size={20} style={{ opacity: 0.3 }} />
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                        {stats?.topBorrowers.map((b: any, i: number) => (
-                            <div key={i} style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                                <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "rgba(255,255,255,0.05)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.8rem", fontWeight: 700, opacity: 0.5 }}>
-                                    {i + 1}
-                                </div>
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-                                        <span style={{ fontSize: "0.9rem", fontWeight: 600 }}>{b.name}</span>
-                                        <span style={{ fontSize: "0.9rem", fontWeight: 700 }}>₹{b.total.toLocaleString('en-IN')}</span>
-                                    </div>
-                                    <div style={{ width: "100%", height: "6px", background: "rgba(255,255,255,0.05)", borderRadius: "10px", overflow: "hidden" }}>
-                                        <div style={{ 
-                                            width: `${(b.total / stats.topBorrowers[0].total) * 100}%`, 
-                                            height: "100%", 
-                                            background: COLORS[i % COLORS.length],
-                                            borderRadius: "10px" 
-                                        }} />
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                <div className="card" style={{ padding: "0.5rem", overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "800px" }}>
+                        <thead>
+                            <tr style={{ textAlign: "left", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                                <th style={{ padding: "1.25rem", fontSize: "0.75rem", opacity: 0.4, textTransform: "uppercase" }}>Customer</th>
+                                <th style={{ padding: "1.25rem", fontSize: "0.75rem", opacity: 0.4, textTransform: "uppercase" }}>DL Number</th>
+                                <th style={{ padding: "1.25rem", fontSize: "0.75rem", opacity: 0.4, textTransform: "uppercase" }}>End Date</th>
+                                <th style={{ padding: "1.25rem", fontSize: "0.75rem", opacity: 0.4, textTransform: "uppercase" }}>Collected</th>
+                                <th style={{ padding: "1.25rem", fontSize: "0.75rem", opacity: 0.4, textTransform: "uppercase" }}>Pending</th>
+                                <th style={{ padding: "1.25rem", fontSize: "0.75rem", opacity: 0.4, textTransform: "uppercase" }}>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {stats?.endingSoon.map((item: any) => (
+                                <tr key={item.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.03)", transition: "all 0.2s ease" }}>
+                                    <td style={{ padding: "1.25rem" }}>
+                                        <div style={{ fontWeight: 600 }}>{item.name}</div>
+                                    </td>
+                                    <td style={{ padding: "1.25rem", fontSize: "0.9rem", opacity: 0.7 }}>{item.ownId}</td>
+                                    <td style={{ padding: "1.25rem" }}>
+                                        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#f59e0b", fontWeight: 600, fontSize: "0.9rem" }}>
+                                            <Calendar size={14} />
+                                            {format(new Date(item.endDate), "dd MMM yyyy")}
+                                        </div>
+                                    </td>
+                                    <td style={{ padding: "1.25rem", color: "var(--success)", fontWeight: 700 }}>₹{item.collected.toLocaleString('en-IN')}</td>
+                                    <td style={{ padding: "1.25rem", color: "var(--error)", fontWeight: 700 }}>₹{item.pending.toLocaleString('en-IN')}</td>
+                                    <td style={{ padding: "1.25rem" }}>
+                                        <Link href={`/dashboard/customers/${item.id}`} style={{ display: "flex", alignItems: "center", gap: "4px", color: "var(--primary)", textDecoration: "none", fontSize: "0.85rem", fontWeight: 600 }}>
+                                            View Profile
+                                            <ChevronRight size={14} />
+                                        </Link>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
