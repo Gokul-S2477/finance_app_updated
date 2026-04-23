@@ -228,7 +228,7 @@ export async function getFinancialSummary() {
     let ledgerEntries: any[] = [];
     try {
         ledgerEntries = await sql`SELECT type, SUM(amount) as total FROM ledger GROUP BY type`;
-    } catch (ee) {
+    } catch (ee: any) {
         console.error("Ledger table might be missing:", ee.message);
     }
 
