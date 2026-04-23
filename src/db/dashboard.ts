@@ -30,19 +30,62 @@ export async function getDashboardStats(startDate?: string, endDate?: string) {
             `;
         }
 
-        const loanRows = await sql`SELECT COUNT(*) as count FROM loans WHERE status = 'active'`;
+        const loanCountRows = await sql`SELECT COUNT(*) as count FROM loans WHERE status = 'active'`;
+        
+        // NEW CHARTS DATA
+        // 1. Status Distribution
+        const statusRows = await sql`SELECT status, COUNT(*) as count FROM loans GROUP BY status`;
+        
+        // 2. Weekday Distribution
+        const weekdayRows = await sql`
+            SELECT TO_CHAR(payment_date, 'Day') as weekday, SUM(amount_collected) as amount 
+            FROM collections 
+            GROUP BY weekday 
+            ORDER BY MIN(EXTRACT(DOW FROM payment_date))
+        `;
+
+        // 3. Top 5 Borrowers
+        const topBorrowers = await sql`
+            SELECT c.name, SUM(l.loan_amount) as total 
+            FROM loans l 
+            JOIN customers c ON l.customer_id = c.id 
+            WHERE l.status = 'active'
+            GROUP BY c.name 
+            ORDER BY total DESC 
+            LIMIT 5
+        `;
 
         return {
-            activeLoans: loanRows[0].count || 0,
+            activeLoans: loanCountRows[0].count || 0,
             totalCollected: parseFloat(collectionRows[0].total).toFixed(2),
             totalProfit: parseFloat(profitRows[0].profit).toFixed(2),
             trends: trendRows.map((r: any) => ({
                 date: r.date,
                 amount: parseFloat(r.amount)
+            })),
+            statusDistribution: statusRows.map((r: any) => ({
+                name: r.status.charAt(0).toUpperCase() + r.status.slice(1),
+                value: parseInt(r.count)
+            })),
+            weekdayDistribution: weekdayRows.map((r: any) => ({
+                day: r.weekday.trim(),
+                amount: parseFloat(r.amount)
+            })),
+            topBorrowers: topBorrowers.map((r: any) => ({
+                name: r.name,
+                total: parseFloat(r.total)
             }))
         };
     } catch (e) {
         console.error("Dashboard Stats Error:", e);
-        return { activeLoans: 0, totalCollected: "0.00", totalProfit: "0.00", trends: [] };
+        return { 
+            activeLoans: 0, 
+            totalCollected: "0.00", 
+            totalProfit: "0.00", 
+            trends: [],
+            statusDistribution: [],
+            weekdayDistribution: [],
+            topBorrowers: []
+        };
     }
 }

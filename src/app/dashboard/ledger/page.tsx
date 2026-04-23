@@ -1,15 +1,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Wallet, Plus, ArrowUpRight, ArrowDownLeft, Calendar, History, TrendingUp, TrendingDown, X } from "lucide-react";
-import { getFinancialSummary, addLedgerEntry, getLedgerEntries } from "@/db/actions";
-import { format } from "date-fns";
+import { Wallet, Plus, ArrowUpRight, ArrowDownLeft, Calendar, History, TrendingUp, TrendingDown, X, Eye, EyeOff, Edit2, Trash2 } from "lucide-react";
+import { getFinancialSummary, addLedgerEntry, getLedgerEntries, updateLedgerEntry, deleteLedgerEntry } from "@/db/actions";
+import { format, differenceInHours } from "date-fns";
 
 export default function LedgerPage() {
     const [summary, setSummary] = useState<any>(null);
     const [entries, setEntries] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [showAdd, setShowAdd] = useState(false);
+    const [editingId, setEditingId] = useState<number | null>(null);
+    const [isPrivate, setIsPrivate] = useState(false);
     
     const [formData, setFormData] = useState({
         amount: "",
@@ -30,14 +32,53 @@ export default function LedgerPage() {
         setLoading(false);
     };
 
+    const handleEdit = (e: any) => {
+        setEditingId(e.id);
+        setFormData({
+            amount: e.amount,
+            type: e.type,
+            description: e.description || "",
+            date: e.date.split('T')[0]
+        });
+        setShowAdd(true);
+    };
+
+    const handleDelete = async (id: number) => {
+        if (!confirm("Are you sure you want to delete this entry?")) return;
+        try {
+            await deleteLedgerEntry(id);
+            loadData();
+        } catch (err: any) {
+            alert(err.message);
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!formData.amount || !formData.type) return;
         
-        await addLedgerEntry(formData);
+        try {
+            if (editingId) {
+                await updateLedgerEntry(editingId, formData);
+            } else {
+                await addLedgerEntry(formData);
+            }
+            closeModal();
+            loadData();
+        } catch (err: any) {
+            alert(err.message);
+        }
+    };
+
+    const closeModal = () => {
         setShowAdd(false);
-        setFormData({ ...formData, amount: "", description: "" });
-        loadData();
+        setEditingId(null);
+        setFormData({
+            amount: "",
+            type: "rotation",
+            description: "",
+            date: new Date().toISOString().split('T')[0]
+        });
     };
 
     if (loading && !summary) return <div style={{ padding: "2rem", textAlign: "center", opacity: 0.5 }}>Loading Ledger...</div>;
@@ -49,6 +90,11 @@ export default function LedgerPage() {
         capital: { label: "External Capital (In)", icon: ArrowUpRight, color: "#3b82f6", bg: "rgba(59, 130, 246, 0.1)" }
     };
 
+    const isEditable = (createdAt: string) => {
+        const hours = differenceInHours(new Date(), new Date(createdAt));
+        return hours < 48;
+    };
+
     return (
         <div className="animate-fade-in" style={{ paddingBottom: "5rem" }}>
             {/* Header */}
@@ -57,14 +103,33 @@ export default function LedgerPage() {
                     <h1>Financial Ledger</h1>
                     <p style={{ opacity: 0.5, fontSize: "0.9rem" }}>Track rotations, expenses, and capital movements.</p>
                 </div>
-                <button 
-                    onClick={() => setShowAdd(true)}
-                    className="btn" 
-                    style={{ background: "var(--primary)", color: "white", borderRadius: "12px", padding: "0.75rem 1.25rem" }}
-                >
-                    <Plus size={20} />
-                    <span>Add Entry</span>
-                </button>
+                <div style={{ display: "flex", gap: "0.75rem" }}>
+                    <button 
+                        onClick={() => setIsPrivate(!isPrivate)}
+                        style={{ 
+                            background: "rgba(255,255,255,0.05)", 
+                            backdropFilter: "blur(10px)",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            color: "white", 
+                            borderRadius: "12px", 
+                            padding: "0.75rem",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: "pointer"
+                        }}
+                    >
+                        {isPrivate ? <Eye size={20} /> : <EyeOff size={20} />}
+                    </button>
+                    <button 
+                        onClick={() => setShowAdd(true)}
+                        className="btn" 
+                        style={{ background: "var(--primary)", color: "white", borderRadius: "12px", padding: "0.75rem 1.25rem" }}
+                    >
+                        <Plus size={20} />
+                        <span>Add Entry</span>
+                    </button>
+                </div>
             </div>
 
             {/* Expected Cash Card */}
@@ -80,17 +145,31 @@ export default function LedgerPage() {
                     <Wallet size={150} />
                 </div>
                 <p style={{ fontSize: "0.9rem", opacity: 0.8, fontWeight: 500 }}>Expected Cash in Hand</p>
-                <h2 style={{ fontSize: "2.5rem", margin: "0.5rem 0", fontWeight: 800 }}>
+                <h2 style={{ 
+                    fontSize: "2.5rem", 
+                    margin: "0.5rem 0", 
+                    fontWeight: 800,
+                    filter: isPrivate ? "blur(8px)" : "none",
+                    transition: "filter 0.3s ease"
+                }}>
                     ₹{summary?.expectedCash?.toLocaleString('en-IN') || "0"}
                 </h2>
                 <div style={{ display: "flex", gap: "1rem", marginTop: "1.5rem" }}>
                     <div style={{ background: "rgba(255,255,255,0.1)", padding: "0.75rem 1rem", borderRadius: "12px", backdropFilter: "blur(10px)" }}>
                         <p style={{ fontSize: "0.7rem", opacity: 0.7 }}>Total Collected</p>
-                        <p style={{ fontSize: "1rem", fontWeight: 700 }}>₹{summary?.totalCollected?.toLocaleString('en-IN')}</p>
+                        <p style={{ 
+                            fontSize: "1rem", 
+                            fontWeight: 700,
+                            filter: isPrivate ? "blur(4px)" : "none"
+                        }}>₹{summary?.totalCollected?.toLocaleString('en-IN')}</p>
                     </div>
                     <div style={{ background: "rgba(255,255,255,0.1)", padding: "0.75rem 1rem", borderRadius: "12px", backdropFilter: "blur(10px)" }}>
                         <p style={{ fontSize: "0.7rem", opacity: 0.7 }}>External Capital</p>
-                        <p style={{ fontSize: "1rem", fontWeight: 700 }}>₹{summary?.totalCapital?.toLocaleString('en-IN')}</p>
+                        <p style={{ 
+                            fontSize: "1rem", 
+                            fontWeight: 700,
+                            filter: isPrivate ? "blur(4px)" : "none"
+                        }}>₹{summary?.totalCapital?.toLocaleString('en-IN')}</p>
                     </div>
                 </div>
             </div>
@@ -104,7 +183,11 @@ export default function LedgerPage() {
                         </div>
                         <span style={{ fontSize: "0.85rem", opacity: 0.6 }}>Total Rotated</span>
                     </div>
-                    <p style={{ fontSize: "1.25rem", fontWeight: 700 }}>₹{summary?.totalRotated?.toLocaleString('en-IN')}</p>
+                    <p style={{ 
+                        fontSize: "1.25rem", 
+                        fontWeight: 700,
+                        filter: isPrivate ? "blur(6px)" : "none"
+                    }}>₹{summary?.totalRotated?.toLocaleString('en-IN')}</p>
                 </div>
                 <div className="card" style={{ padding: "1.25rem" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.75rem" }}>
@@ -113,7 +196,11 @@ export default function LedgerPage() {
                         </div>
                         <span style={{ fontSize: "0.85rem", opacity: 0.6 }}>Total Expenses</span>
                     </div>
-                    <p style={{ fontSize: "1.25rem", fontWeight: 700 }}>₹{summary?.totalExpenses?.toLocaleString('en-IN')}</p>
+                    <p style={{ 
+                        fontSize: "1.25rem", 
+                        fontWeight: 700,
+                        filter: isPrivate ? "blur(6px)" : "none"
+                    }}>₹{summary?.totalExpenses?.toLocaleString('en-IN')}</p>
                 </div>
             </div>
 
@@ -132,6 +219,7 @@ export default function LedgerPage() {
                 ) : entries.map((e) => {
                     const type = typeLabels[e.type] || { label: e.type, icon: Plus, color: "white", bg: "rgba(255,255,255,0.05)" };
                     const Icon = type.icon;
+                    const canModify = isEditable(e.createdAt);
                     return (
                         <div key={e.id} className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem 1.25rem" }}>
                             <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
@@ -143,18 +231,35 @@ export default function LedgerPage() {
                                     <p style={{ fontSize: "0.75rem", opacity: 0.4 }}>{e.description || "No description"}</p>
                                 </div>
                             </div>
-                            <div style={{ textAlign: "right" }}>
-                                <p style={{ fontSize: "1rem", fontWeight: 700, color: type.color }}>
-                                    {['rotation', 'expense', 'personal'].includes(e.type) ? '-' : '+'} ₹{parseFloat(e.amount).toLocaleString('en-IN')}
-                                </p>
-                                <p style={{ fontSize: "0.7rem", opacity: 0.4 }}>{format(new Date(e.date), "dd MMM yyyy")}</p>
+                            <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
+                                <div style={{ textAlign: "right" }}>
+                                    <p style={{ 
+                                        fontSize: "1rem", 
+                                        fontWeight: 700, 
+                                        color: type.color,
+                                        filter: isPrivate ? "blur(5px)" : "none"
+                                    }}>
+                                        {['rotation', 'expense', 'personal'].includes(e.type) ? '-' : '+'} ₹{parseFloat(e.amount).toLocaleString('en-IN')}
+                                    </p>
+                                    <p style={{ fontSize: "0.7rem", opacity: 0.4 }}>{format(new Date(e.date), "dd MMM yyyy")}</p>
+                                </div>
+                                {canModify && (
+                                    <div style={{ display: "flex", gap: "0.5rem" }}>
+                                        <button onClick={() => handleEdit(e)} style={{ background: "rgba(255,255,255,0.05)", border: "none", color: "var(--primary)", padding: "8px", borderRadius: "8px", cursor: "pointer" }}>
+                                            <Edit2 size={16} />
+                                        </button>
+                                        <button onClick={() => handleDelete(e.id)} style={{ background: "rgba(239,68,68,0.05)", border: "none", color: "var(--error)", padding: "8px", borderRadius: "8px", cursor: "pointer" }}>
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     );
                 })}
             </div>
 
-            {/* Add Entry Modal */}
+            {/* Add/Edit Entry Modal */}
             {showAdd && (
                 <div style={{
                     position: "fixed",
@@ -169,8 +274,8 @@ export default function LedgerPage() {
                 }}>
                     <div className="card" style={{ width: "100%", maxWidth: "450px", padding: "2rem", border: "1px solid rgba(255,255,255,0.1)" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-                            <h2 style={{ fontSize: "1.25rem" }}>Add Ledger Entry</h2>
-                            <button onClick={() => setShowAdd(false)} style={{ background: "none", border: "none", color: "white", opacity: 0.5 }}>
+                            <h2 style={{ fontSize: "1.25rem" }}>{editingId ? "Edit Ledger Entry" : "Add Ledger Entry"}</h2>
+                            <button onClick={closeModal} style={{ background: "none", border: "none", color: "white", opacity: 0.5 }}>
                                 <X size={24} />
                             </button>
                         </div>
@@ -178,67 +283,35 @@ export default function LedgerPage() {
                         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
                             <div>
                                 <label style={{ display: "block", fontSize: "0.85rem", opacity: 0.6, marginBottom: "0.5rem" }}>Amount (₹)</label>
-                                <input 
-                                    type="number" 
-                                    required
-                                    placeholder="Enter amount"
-                                    value={formData.amount}
-                                    onChange={e => setFormData({ ...formData, amount: e.target.value })}
-                                    style={{ width: "100%", background: "var(--input)", border: "1px solid var(--border)", borderRadius: "10px", padding: "0.8rem 1rem", color: "white" }}
-                                />
+                                <input type="number" required placeholder="Enter amount" value={formData.amount} onChange={e => setFormData({ ...formData, amount: e.target.value })}
+                                    style={{ width: "100%", background: "var(--input)", border: "1px solid var(--border)", borderRadius: "10px", padding: "0.8rem 1rem", color: "white" }} />
                             </div>
-
                             <div>
                                 <label style={{ display: "block", fontSize: "0.85rem", opacity: 0.6, marginBottom: "0.5rem" }}>Type</label>
-                                <select 
-                                    value={formData.type}
-                                    onChange={e => setFormData({ ...formData, type: e.target.value })}
+                                <select value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value })}
                                     style={{ 
-                                        width: "100%", 
-                                        background: "var(--input)", 
-                                        border: "1px solid var(--border)", 
-                                        borderRadius: "10px", 
-                                        padding: "0.8rem 1rem", 
-                                        color: "white",
-                                        appearance: "none",
-                                        cursor: "pointer",
+                                        width: "100%", background: "var(--input)", border: "1px solid var(--border)", borderRadius: "10px", padding: "0.8rem 1rem", color: "white", appearance: "none", cursor: "pointer",
                                         backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
-                                        backgroundRepeat: "no-repeat",
-                                        backgroundPosition: "right 1rem center",
-                                        backgroundSize: "1.2rem"
-                                    }}
-                                >
+                                        backgroundRepeat: "no-repeat", backgroundPosition: "right 1rem center", backgroundSize: "1.2rem"
+                                    }}>
                                     <option value="rotation" style={{ background: "#1a1a1a", color: "white" }}>Rotation (In)</option>
                                     <option value="expense" style={{ background: "#1a1a1a", color: "white" }}>Business Expense (Out)</option>
                                     <option value="personal" style={{ background: "#1a1a1a", color: "white" }}>Personal Expense (Out)</option>
                                     <option value="capital" style={{ background: "#1a1a1a", color: "white" }}>External Capital (In)</option>
                                 </select>
                             </div>
-
                             <div>
                                 <label style={{ display: "block", fontSize: "0.85rem", opacity: 0.6, marginBottom: "0.5rem" }}>Description</label>
-                                <input 
-                                    type="text" 
-                                    placeholder="What is this for?"
-                                    value={formData.description}
-                                    onChange={e => setFormData({ ...formData, description: e.target.value })}
-                                    style={{ width: "100%", background: "var(--input)", border: "1px solid var(--border)", borderRadius: "10px", padding: "0.8rem 1rem", color: "white" }}
-                                />
+                                <input type="text" placeholder="What is this for?" value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })}
+                                    style={{ width: "100%", background: "var(--input)", border: "1px solid var(--border)", borderRadius: "10px", padding: "0.8rem 1rem", color: "white" }} />
                             </div>
-
                             <div>
                                 <label style={{ display: "block", fontSize: "0.85rem", opacity: 0.6, marginBottom: "0.5rem" }}>Date</label>
-                                <input 
-                                    type="date" 
-                                    required
-                                    value={formData.date}
-                                    onChange={e => setFormData({ ...formData, date: e.target.value })}
-                                    style={{ width: "100%", background: "var(--input)", border: "1px solid var(--border)", borderRadius: "10px", padding: "0.8rem 1rem", color: "white" }}
-                                />
+                                <input type="date" required value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })}
+                                    style={{ width: "100%", background: "var(--input)", border: "1px solid var(--border)", borderRadius: "10px", padding: "0.8rem 1rem", color: "white" }} />
                             </div>
-
                             <button className="btn" type="submit" style={{ background: "var(--primary)", color: "white", marginTop: "1rem", padding: "1rem" }}>
-                                Save Entry
+                                {editingId ? "Update Entry" : "Save Entry"}
                             </button>
                         </form>
                     </div>

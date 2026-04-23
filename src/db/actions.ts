@@ -1,13 +1,11 @@
 "use server";
 
 import { neon } from "@neondatabase/serverless";
-import { addDays } from "date-fns";
+import { addDays, subHours, isAfter } from "date-fns";
 
 const sql = neon(process.env.DATABASE_URL || "");
 
-// ... (previous functions: getCustomers, getDeletedCustomers, createCustomer, updateCustomer, deleteCustomer, restoreCustomer, getCustomerDetails, getCollectionStatus, recordCollection, closeLoan, createNewLoanForCustomer, getLedgerEntries, addLedgerEntry)
-// I will rewrite the whole file to ensure consistency, but I'll skip to the ledger parts if I can.
-// Actually, I'll rewrite it to be safe.
+// ... (getCustomers, getDeletedCustomers, createCustomer, updateCustomer, deleteCustomer, restoreCustomer, getCustomerDetails, getCollectionStatus, recordCollection, closeLoan, createNewLoanForCustomer)
 
 export async function getCustomers(search?: string) {
   try {
@@ -22,19 +20,12 @@ export async function getCustomers(search?: string) {
       `;
     }
     return await sql`SELECT * FROM customers WHERE is_deleted = FALSE ORDER BY created_at DESC`;
-  } catch (e) {
-    console.error("getCustomers error:", e);
-    return [];
-  }
+  } catch (e) { console.error("getCustomers error:", e); return []; }
 }
 
 export async function getDeletedCustomers() {
-  try {
-    return await sql`SELECT * FROM customers WHERE is_deleted = TRUE ORDER BY deleted_at DESC`;
-  } catch (e) {
-    console.error("getDeletedCustomers error:", e);
-    return [];
-  }
+  try { return await sql`SELECT * FROM customers WHERE is_deleted = TRUE ORDER BY deleted_at DESC`; }
+  catch (e) { console.error("getDeletedCustomers error:", e); return []; }
 }
 
 export async function createCustomer(data: any) {
@@ -144,6 +135,7 @@ export async function createNewLoanForCustomer(customerId: number, loanAmount: s
   return await sql`INSERT INTO loans (customer_id, loan_amount, given_amount, interest_rate, start_date, end_date, status) VALUES (${customerId}, ${amount}, ${givenAmount}, 12.00, ${start.toISOString().split("T")[0]}, ${end.toISOString().split("T")[0]}, 'active')`;
 }
 
+// LEDGER
 export async function getLedgerEntries() {
   try { return await sql`SELECT * FROM ledger ORDER BY date DESC, created_at DESC LIMIT 50`; }
   catch (e) { console.error("getLedgerEntries error:", e); return []; }
@@ -151,6 +143,28 @@ export async function getLedgerEntries() {
 
 export async function addLedgerEntry(data: { amount: string, type: string, description: string, date: string }) {
   return await sql`INSERT INTO ledger (amount, type, description, date) VALUES (${data.amount}, ${data.type}, ${data.description}, ${data.date})`;
+}
+
+export async function updateLedgerEntry(id: number, data: { amount: string, type: string, description: string, date: string }) {
+    const entry = await sql`SELECT createdAt FROM ledger WHERE id = ${id}`;
+    if (!entry[0]) throw new Error("Entry not found");
+    const limitDate = addDays(new Date(entry[0].createdAt), 2);
+    if (new Date() > limitDate) throw new Error("Editing expired (48h limit reached)");
+
+    return await sql`
+        UPDATE ledger 
+        SET amount = ${data.amount}, type = ${data.type}, description = ${data.description}, date = ${data.date}
+        WHERE id = ${id}
+    `;
+}
+
+export async function deleteLedgerEntry(id: number) {
+    const entry = await sql`SELECT createdAt FROM ledger WHERE id = ${id}`;
+    if (!entry[0]) throw new Error("Entry not found");
+    const limitDate = addDays(new Date(entry[0].createdAt), 2);
+    if (new Date() > limitDate) throw new Error("Deletion expired (48h limit reached)");
+
+    return await sql`DELETE FROM ledger WHERE id = ${id}`;
 }
 
 export async function getFinancialSummary() {
@@ -163,9 +177,6 @@ export async function getFinancialSummary() {
     const totalCollected = parseFloat(collections[0].total || "0");
     const ledgerMap = new Map(ledgerEntries.map((r: any) => [r.type, parseFloat(r.total || "0")]));
 
-    // NEW LOGIC:
-    // In: collection, rotation, capital
-    // Out: expense, personal
     const totalRotation = ledgerMap.get('rotation') || 0;
     const totalCapital = ledgerMap.get('capital') || 0;
     const totalExpenses = (ledgerMap.get('expense') || 0) + (ledgerMap.get('personal') || 0);

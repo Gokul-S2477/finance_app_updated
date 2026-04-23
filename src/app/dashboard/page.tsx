@@ -1,200 +1,237 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Users, TrendingUp, DollarSign, Calendar, ArrowRight, Wallet, PieChart as PieIcon, BarChart3, TrendingDown } from "lucide-react";
 import { getDashboardStats } from "@/db/dashboard";
-import { TrendingUp, Users, Wallet, Calendar, Filter, ArrowRight, IndianRupee, PieChart as PieIcon } from "lucide-react";
-import { format, subDays } from "date-fns";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, AreaChart, Area } from "recharts";
+import Link from "next/link";
 
-export default function DashboardPage() {
+export default function Dashboard() {
     const [stats, setStats] = useState<any>(null);
     const [loading, setLoading] = useState(true);
-    
-    // Filter state
-    const [filter, setFilter] = useState({
-        startDate: format(subDays(new Date(), 30), "yyyy-MM-dd"),
-        endDate: format(new Date(), "yyyy-MM-dd")
+    const [dateRange, setDateRange] = useState({
+        from: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
+        to: new Date().toISOString().split('T')[0]
     });
 
-    useEffect(() => { 
-        setLoading(true);
-        getDashboardStats(filter.startDate, filter.endDate).then(res => {
-            setStats(res);
-            setLoading(false);
-        }); 
-    }, [filter.startDate, filter.endDate]);
+    useEffect(() => {
+        fetchStats();
+    }, []);
 
-    const kpis = stats ? [
-        { label: "Active Loans", value: stats.activeLoans, sub: "Currently running", icon: Users, color: "#6366f1" },
-        { label: "Range Collection", value: `₹${parseFloat(stats.totalCollected).toLocaleString()}`, sub: "For selected period", icon: Wallet, color: "#10b981" },
-        { label: "Range Profit", value: `₹${parseFloat(stats.totalProfit).toLocaleString()}`, sub: "Interest for period", icon: TrendingUp, color: "#f59e0b" },
-    ] : [];
+    const fetchStats = async () => {
+        setLoading(true);
+        const data = await getDashboardStats(dateRange.from, dateRange.to);
+        setStats(data);
+        setLoading(false);
+    };
+
+    if (loading && !stats) return <div style={{ padding: "2rem", textAlign: "center", opacity: 0.5 }}>Loading Dashboard...</div>;
+
+    const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#3b82f6'];
 
     return (
-        <div className="animate-fade-in" style={{ paddingBottom: "2rem" }}>
-            {/* Header with Filters */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "2rem", flexWrap: "wrap", gap: "1rem" }}>
+        <div className="animate-fade-in" style={{ paddingBottom: "5rem" }}>
+            <div style={{ marginBottom: "2.5rem", display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "1.5rem" }}>
                 <div>
-                    <h1 style={{ marginBottom: "0.25rem" }}>Executive Dashboard</h1>
-                    <p style={{ fontSize: "0.85rem", opacity: 0.5 }}>Real-time financial performance tracking</p>
+                    <h1 style={{ fontSize: "2rem", fontWeight: 800, letterSpacing: "-0.02em" }}>Executive Dashboard</h1>
+                    <p style={{ opacity: 0.5, marginTop: "0.25rem" }}>Business performance and collection analytics.</p>
                 </div>
-                
-                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", background: "var(--input)", border: "1px solid var(--border)", borderRadius: "16px", padding: "0.75rem 1.25rem" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                        <Calendar size={14} style={{ opacity: 0.5 }} />
-                        <input type="date" className="date-input" value={filter.startDate} onChange={e => setFilter({...filter, startDate: e.target.value})} />
+
+                <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", background: "rgba(255,255,255,0.03)", padding: "0.5rem", borderRadius: "16px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                        <span style={{ fontSize: "0.65rem", opacity: 0.4, paddingLeft: "0.5rem" }}>From</span>
+                        <input type="date" value={dateRange.from} onChange={e => setDateRange({ ...dateRange, from: e.target.value })}
+                            style={{ background: "none", border: "none", color: "white", fontSize: "0.85rem", padding: "0.25rem 0.5rem", cursor: "pointer" }} />
                     </div>
-                    <ArrowRight size={14} style={{ opacity: 0.3 }} />
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                        <input type="date" className="date-input" value={filter.endDate} onChange={e => setFilter({...filter, endDate: e.target.value})} />
+                    <div style={{ width: "1px", height: "24px", background: "rgba(255,255,255,0.1)" }} />
+                    <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                        <span style={{ fontSize: "0.65rem", opacity: 0.4, paddingLeft: "0.5rem" }}>To</span>
+                        <input type="date" value={dateRange.to} onChange={e => setDateRange({ ...dateRange, to: e.target.value })}
+                            style={{ background: "none", border: "none", color: "white", fontSize: "0.85rem", padding: "0.25rem 0.5rem", cursor: "pointer" }} />
                     </div>
-                    <div style={{ width: "1px", height: "20px", background: "var(--border)", margin: "0 0.25rem" }} />
-                    <Filter size={16} style={{ opacity: 0.5 }} />
+                    <button onClick={fetchStats} className="btn" style={{ background: "var(--primary)", color: "white", padding: "0.6rem 1rem", borderRadius: "12px", marginLeft: "0.5rem" }}>
+                        Apply
+                    </button>
                 </div>
             </div>
 
-            {loading ? (
-                <div style={{ padding: "4rem", textAlign: "center", opacity: 0.5 }}>Loading performance data...</div>
-            ) : (
-                <>
-                    {/* KPI Grid */}
-                    <div className="responsive-grid cols-3" style={{ marginBottom: "2rem" }}>
-                        {kpis.map(({ label, value, sub, icon: Icon, color }) => (
-                            <div key={label} className="card dashboard-card" style={{ borderLeft: `6px solid ${color}` }}>
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                                    <div>
-                                        <p style={{ fontSize: "0.8rem", fontWeight: 600, opacity: 0.5, marginBottom: "0.5rem" }}>{label}</p>
-                                        <h2 style={{ fontSize: "2rem", fontWeight: 800, margin: 0 }}>{value}</h2>
-                                        <p style={{ fontSize: "0.7rem", opacity: 0.4, marginTop: "0.25rem" }}>{sub}</p>
+            {/* Main KPIs */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.5rem", marginBottom: "2.5rem" }}>
+                <div className="card" style={{ padding: "1.75rem", background: "linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(99, 102, 241, 0.05) 100%)", border: "1px solid rgba(99, 102, 241, 0.2)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1.5rem" }}>
+                        <div style={{ width: "48px", height: "48px", borderRadius: "14px", background: "var(--primary)", color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <DollarSign size={24} />
+                        </div>
+                        <TrendingUp size={20} style={{ color: "var(--success)" }} />
+                    </div>
+                    <p style={{ fontSize: "0.85rem", opacity: 0.5, fontWeight: 500 }}>Total Collected</p>
+                    <h2 style={{ fontSize: "2rem", fontWeight: 800, margin: "0.5rem 0" }}>₹{parseFloat(stats?.totalCollected).toLocaleString('en-IN')}</h2>
+                    <p style={{ fontSize: "0.75rem", color: "var(--success)", fontWeight: 600 }}>Period performance</p>
+                </div>
+
+                <div className="card" style={{ padding: "1.75rem", background: "linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%)", border: "1px solid rgba(16, 185, 129, 0.2)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1.5rem" }}>
+                        <div style={{ width: "48px", height: "48px", borderRadius: "14px", background: "var(--success)", color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <TrendingUp size={24} />
+                        </div>
+                        <TrendingUp size={20} style={{ color: "var(--success)" }} />
+                    </div>
+                    <p style={{ fontSize: "0.85rem", opacity: 0.5, fontWeight: 500 }}>Total Profit</p>
+                    <h2 style={{ fontSize: "2rem", fontWeight: 800, margin: "0.5rem 0" }}>₹{parseFloat(stats?.totalProfit).toLocaleString('en-IN')}</h2>
+                    <p style={{ fontSize: "0.75rem", color: "var(--success)", fontWeight: 600 }}>Expected interest yield</p>
+                </div>
+
+                <div className="card" style={{ padding: "1.75rem", background: "linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%)", border: "1px solid rgba(245, 158, 11, 0.2)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1.5rem" }}>
+                        <div style={{ width: "48px", height: "48px", borderRadius: "14px", background: "#f59e0b", color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <Users size={24} />
+                        </div>
+                        <span style={{ fontSize: "0.85rem", opacity: 0.5 }}>Active</span>
+                    </div>
+                    <p style={{ fontSize: "0.85rem", opacity: 0.5, fontWeight: 500 }}>Active Loans</p>
+                    <h2 style={{ fontSize: "2rem", fontWeight: 800, margin: "0.5rem 0" }}>{stats?.activeLoans}</h2>
+                    <p style={{ fontSize: "0.75rem", opacity: 0.5 }}>Currently running accounts</p>
+                </div>
+            </div>
+
+            {/* Charts Grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(400px, 1fr))", gap: "1.5rem", marginBottom: "2.5rem" }}>
+                {/* Collection Trend */}
+                <div className="card" style={{ padding: "2rem" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
+                        <h3 style={{ fontSize: "1.1rem", fontWeight: 700 }}>Collection Trend</h3>
+                        <div style={{ padding: "4px 10px", borderRadius: "20px", background: "rgba(255,255,255,0.05)", fontSize: "0.7rem", opacity: 0.5 }}>Daily</div>
+                    </div>
+                    <div style={{ width: "100%", height: 300 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={stats?.trends}>
+                                <defs>
+                                    <linearGradient id="colorAmt" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.3}/>
+                                        <stop offset="95%" stopColor="var(--primary)" stopOpacity={0}/>
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                                <XAxis dataKey="date" stroke="rgba(255,255,255,0.3)" fontSize={12} tickFormatter={(val) => new Date(val).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} />
+                                <YAxis stroke="rgba(255,255,255,0.3)" fontSize={12} tickFormatter={(val) => `₹${val}`} />
+                                <Tooltip contentStyle={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }} />
+                                <Area type="monotone" dataKey="amount" stroke="var(--primary)" strokeWidth={3} fillOpacity={1} fill="url(#colorAmt)" />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                {/* Weekday Distribution */}
+                <div className="card" style={{ padding: "2rem" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
+                        <h3 style={{ fontSize: "1.1rem", fontWeight: 700 }}>Weekday Performance</h3>
+                        <BarChart3 size={20} style={{ opacity: 0.3 }} />
+                    </div>
+                    <div style={{ width: "100%", height: 300 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={stats?.weekdayDistribution}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                                <XAxis dataKey="day" stroke="rgba(255,255,255,0.3)" fontSize={11} />
+                                <YAxis stroke="rgba(255,255,255,0.3)" fontSize={12} />
+                                <Tooltip contentStyle={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }} />
+                                <Bar dataKey="amount" radius={[6, 6, 0, 0]}>
+                                    {stats?.weekdayDistribution.map((entry: any, index: number) => (
+                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    ))}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                {/* Status Distribution */}
+                <div className="card" style={{ padding: "2rem" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
+                        <h3 style={{ fontSize: "1.1rem", fontWeight: 700 }}>Loan Status</h3>
+                        <PieIcon size={20} style={{ opacity: 0.3 }} />
+                    </div>
+                    <div style={{ width: "100%", height: 300, position: "relative" }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie data={stats?.statusDistribution} innerRadius={80} outerRadius={110} paddingAngle={5} dataKey="value">
+                                    {stats?.statusDistribution.map((entry: any, index: number) => (
+                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    ))}
+                                </Pie>
+                                <Tooltip />
+                            </PieChart>
+                        </ResponsiveContainer>
+                        <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
+                            <span style={{ fontSize: "1.5rem", fontWeight: 800 }}>{stats?.activeLoans + (stats?.statusDistribution.find((s:any)=>s.name==='Closed')?.value || 0)}</span>
+                            <span style={{ fontSize: "0.7rem", opacity: 0.5 }}>Total Loans</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Top Borrowers */}
+                <div className="card" style={{ padding: "2rem" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
+                        <h3 style={{ fontSize: "1.1rem", fontWeight: 700 }}>Top 5 Borrowers</h3>
+                        <Users size={20} style={{ opacity: 0.3 }} />
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                        {stats?.topBorrowers.map((b: any, i: number) => (
+                            <div key={i} style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                                <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "rgba(255,255,255,0.05)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.8rem", fontWeight: 700, opacity: 0.5 }}>
+                                    {i + 1}
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                                        <span style={{ fontSize: "0.9rem", fontWeight: 600 }}>{b.name}</span>
+                                        <span style={{ fontSize: "0.9rem", fontWeight: 700 }}>₹{b.total.toLocaleString('en-IN')}</span>
                                     </div>
-                                    <div style={{ background: `${color}15`, borderRadius: "12px", padding: "0.75rem" }}>
-                                        <Icon size={24} color={color} />
+                                    <div style={{ width: "100%", height: "6px", background: "rgba(255,255,255,0.05)", borderRadius: "10px", overflow: "hidden" }}>
+                                        <div style={{ 
+                                            width: `${(b.total / stats.topBorrowers[0].total) * 100}%`, 
+                                            height: "100%", 
+                                            background: COLORS[i % COLORS.length],
+                                            borderRadius: "10px" 
+                                        }} />
                                     </div>
                                 </div>
                             </div>
                         ))}
                     </div>
+                </div>
+            </div>
 
-                    <div className="responsive-grid cols-2" style={{ gap: "2rem" }}>
-                        {/* Collection Trend Chart (Custom CSS/SVG) */}
-                        <div className="card" style={{ padding: "1.5rem" }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-                                <h3 style={{ fontSize: "1rem", margin: 0 }}>Collection Trend</h3>
-                                <span style={{ fontSize: "0.7rem", opacity: 0.5 }}>Last {stats.trends.length} entries</span>
-                            </div>
-                            
-                            <div style={{ height: "200px", display: "flex", alignItems: "flex-end", gap: "0.5rem", padding: "0 0.5rem" }}>
-                                {stats.trends.length === 0 ? (
-                                    <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.3, fontSize: "0.8rem" }}>No data for this range</div>
-                                ) : (
-                                    stats.trends.map((t: any, i: number) => {
-                                        const max = Math.max(...stats.trends.map((x: any) => x.amount), 1);
-                                        const height = (t.amount / max) * 100;
-                                        return (
-                                            <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "0.5rem" }}>
-                                                <div className="bar-wrapper" style={{ width: "100%", height: "150px", display: "flex", alignItems: "flex-end", position: "relative" }}>
-                                                    <div className="bar" style={{ 
-                                                        width: "100%", 
-                                                        height: `${height}%`, 
-                                                        background: "var(--primary)", 
-                                                        borderRadius: "4px 4px 0 0",
-                                                        transition: "height 0.6s cubic-bezier(0.4, 0, 0.2, 1)",
-                                                        position: "relative"
-                                                    }}>
-                                                        <div className="tooltip">₹{t.amount.toLocaleString()}</div>
-                                                    </div>
-                                                </div>
-                                                <span style={{ fontSize: "0.6rem", opacity: 0.4, transform: "rotate(-45deg)", whiteSpace: "nowrap" }}>
-                                                    {format(new Date(t.date), "MMM dd")}
-                                                </span>
-                                            </div>
-                                        )
-                                    })
-                                )}
-                            </div>
+            {/* Quick Actions */}
+            <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+                <Link href="/dashboard/customers" className="card" style={{ flex: 1, minWidth: "200px", padding: "1.25rem", display: "flex", alignItems: "center", justifyContent: "space-between", textDecoration: "none", color: "inherit", transition: "all 0.2s ease" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                        <div style={{ padding: "10px", borderRadius: "12px", background: "rgba(99, 102, 241, 0.1)", color: "var(--primary)" }}>
+                            <Users size={20} />
                         </div>
-
-                        {/* Quick Actions */}
-                        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-                            <div className="card clickable" onClick={() => window.location.href = "/dashboard/ledger"} style={{ 
-                                background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
-                                color: "white",
-                                border: "none"
-                            }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                                    <div style={{ background: "rgba(255,255,255,0.2)", borderRadius: "12px", padding: "0.75rem" }}>
-                                        <Wallet size={24} />
-                                    </div>
-                                    <div>
-                                        <h3 style={{ margin: 0, fontSize: "1.1rem" }}>Financial Ledger</h3>
-                                        <p style={{ margin: 0, fontSize: "0.8rem", opacity: 0.8 }}>Manage rotations & expenses</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="card clickable" onClick={() => window.location.href = "/dashboard/collection"} style={{ borderLeft: "6px solid var(--success)" }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                                    <div style={{ background: "rgba(16, 185, 129, 0.1)", borderRadius: "12px", padding: "0.75rem" }}>
-                                        <PieIcon size={24} color="var(--success)" />
-                                    </div>
-                                    <div>
-                                        <h3 style={{ margin: 0, fontSize: "1.1rem" }}>Daily Collection</h3>
-                                        <p style={{ margin: 0, fontSize: "0.8rem", opacity: 0.5 }}>Quick entry & tracking</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        <span style={{ fontWeight: 600 }}>Add Customer</span>
                     </div>
-                </>
-            )}
+                    <ArrowRight size={18} style={{ opacity: 0.3 }} />
+                </Link>
 
-            <style jsx>{`
-                .date-input {
-                    background: none;
-                    border: none;
-                    color: white;
-                    font-size: 0.85rem;
-                    outline: none;
-                    width: 100px;
-                }
-                .dashboard-card {
-                    transition: transform 0.2s;
-                }
-                .dashboard-card:hover {
-                    transform: translateY(-4px);
-                }
-                .clickable {
-                    cursor: pointer;
-                    transition: all 0.2s;
-                }
-                .clickable:hover {
-                    transform: scale(1.02);
-                    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
-                }
-                .bar-wrapper:hover .bar {
-                    filter: brightness(1.2);
-                }
-                .bar-wrapper:hover .tooltip {
-                    opacity: 1;
-                    transform: translateX(-50%) translateY(-10px);
-                }
-                .tooltip {
-                    position: absolute;
-                    top: -25px;
-                    left: 50%;
-                    transform: translateX(-50%) translateY(0);
-                    background: var(--primary);
-                    color: white;
-                    padding: 2px 6px;
-                    border-radius: 4px;
-                    font-size: 0.65rem;
-                    font-weight: 700;
-                    opacity: 0;
-                    pointer-events: none;
-                    transition: all 0.2s;
-                    white-space: nowrap;
-                    z-index: 10;
-                }
-            `}</style>
+                <Link href="/dashboard/collection" className="card" style={{ flex: 1, minWidth: "200px", padding: "1.25rem", display: "flex", alignItems: "center", justifyContent: "space-between", textDecoration: "none", color: "inherit", transition: "all 0.2s ease" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                        <div style={{ padding: "10px", borderRadius: "12px", background: "rgba(16, 185, 129, 0.1)", color: "var(--success)" }}>
+                            <Calendar size={20} />
+                        </div>
+                        <span style={{ fontWeight: 600 }}>Daily Collection</span>
+                    </div>
+                    <ArrowRight size={18} style={{ opacity: 0.3 }} />
+                </Link>
+
+                <Link href="/dashboard/ledger" className="card" style={{ flex: 1, minWidth: "200px", padding: "1.25rem", display: "flex", alignItems: "center", justifyContent: "space-between", textDecoration: "none", color: "inherit", transition: "all 0.2s ease" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                        <div style={{ padding: "10px", borderRadius: "12px", background: "rgba(245, 158, 11, 0.1)", color: "#f59e0b" }}>
+                            <Wallet size={20} />
+                        </div>
+                        <span style={{ fontWeight: 600 }}>Finance Ledger</span>
+                    </div>
+                    <ArrowRight size={18} style={{ opacity: 0.3 }} />
+                </Link>
+            </div>
         </div>
     );
 }
