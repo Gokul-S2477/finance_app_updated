@@ -43,7 +43,7 @@ export const collections = pgTable("collections", {
 export const ledger = pgTable("ledger", {
     id: serial("id").primaryKey(),
     amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
-    type: text("type", { enum: ["rotation", "expense", "personal", "capital", "initial"] }).notNull(),
+    type: text("type", { enum: ["rotation", "expense", "personal", "capital"] }).notNull(), // Removed initial
     description: text("description"),
     date: date("date").notNull(),
     createdAt: timestamp("created_at").defaultNow(),
