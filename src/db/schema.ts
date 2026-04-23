@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, date, boolean, decimal, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, date, boolean, decimal, timestamp, uniqueIndex, unique } from "drizzle-orm/pg-core";
 
 export const customers = pgTable("customers", {
     id: serial("id").primaryKey(),
@@ -35,5 +35,16 @@ export const collections = pgTable("collections", {
     paymentDate: date("payment_date").notNull(),
     amountCollected: decimal("amount_collected", { precision: 10, scale: 2 }).notNull(),
     status: text("status", { enum: ["paid", "missed"] }).default("paid"),
+    createdAt: timestamp("created_at").defaultNow(),
+}, (t) => ({
+    unq: unique().on(t.loanId, t.paymentDate),
+}));
+
+export const ledger = pgTable("ledger", {
+    id: serial("id").primaryKey(),
+    amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+    type: text("type", { enum: ["rotation", "expense", "personal", "capital", "initial"] }).notNull(),
+    description: text("description"),
+    date: date("date").notNull(),
     createdAt: timestamp("created_at").defaultNow(),
 });

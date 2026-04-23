@@ -204,7 +204,13 @@ export async function getCollectionStatus(dateStr: string, search?: string) {
   `;
   const totalCollectedMap = new Map(totalCollectionsRows.map((r: any) => [r.loan_id, parseFloat(r.total)]));
 
-  let result = activeLoans.map((loan: any) => ({
+  let result = activeLoans
+    .filter((loan: any) => {
+        const start = new Date(loan.start_date);
+        const current = new Date(dateStr);
+        return start <= current;
+    })
+    .map((loan: any) => ({
     loanId: loan.id,
     customerId: loan.customer_id,
     ownId: loan.own_id,
@@ -260,4 +266,40 @@ export async function createNewLoanForCustomer(customerId: number, loanAmount: s
     INSERT INTO loans (customer_id, loan_amount, given_amount, interest_rate, start_date, end_date, status)
     VALUES (${customerId}, ${amount}, ${givenAmount}, 12.00, ${start.toISOString().split("T")[0]}, ${end.toISOString().split("T")[0]}, 'active')
   `;
+}
+
+// LEDGER ACTIONS
+export async function getLedgerEntries() {
+  return await sql`SELECT * FROM ledger ORDER BY date DESC, created_at DESC LIMIT 50`;
+}
+
+export async function addLedgerEntry(data: { amount: string, type: string, description: string, date: string }) {
+  return await sql`
+    INSERT INTO ledger (amount, type, description, date)
+    VALUES (${data.amount}, ${data.type}, ${data.description}, ${data.date})
+  `;
+}
+
+export async function getFinancialSummary() {
+  const collections = await sql`SELECT COALESCE(SUM(amount_collected), 0) as total FROM collections`;
+  const ledgerEntries = await sql`SELECT type, SUM(amount) as total FROM ledger GROUP BY type`;
+
+  const totalCollected = parseFloat(collections[0].total);
+  const ledgerMap = new Map(ledgerEntries.map((r: any) => [r.type, parseFloat(r.total)]));
+
+  const totalRotated = ledgerMap.get('rotation') || 0;
+  const totalExpenses = (ledgerMap.get('expense') || 0) + (ledgerMap.get('personal') || 0);
+  const totalCapital = ledgerMap.get('capital') || 0;
+  const initialBalance = ledgerMap.get('initial') || 0;
+
+  const expectedCash = (initialBalance + totalCollected + totalCapital) - (totalRotated + totalExpenses);
+
+  return {
+    totalCollected,
+    totalRotated,
+    totalExpenses,
+    totalCapital,
+    initialBalance,
+    expectedCash
+  };
 }
