@@ -6,7 +6,7 @@ const sql = neon(process.env.DATABASE_URL!);
 
 export async function getDashboardStats(startDate?: string, endDate?: string) {
     try {
-        let collectionRows, profitRows, trendRows;
+        let collectionRows, profitRows, trendRows, pendingRows;
 
         if (startDate && endDate) {
             collectionRows = await sql`SELECT COALESCE(SUM(amount_collected), 0) as total FROM collections WHERE payment_date >= ${startDate} AND payment_date <= ${endDate}`;
@@ -18,6 +18,12 @@ export async function getDashboardStats(startDate?: string, endDate?: string) {
                 GROUP BY payment_date 
                 ORDER BY payment_date ASC
             `;
+            // For pending, we look at loans active in the period or started in the period
+            pendingRows = await sql`
+                SELECT 
+                    (SELECT COALESCE(SUM(loan_amount), 0) FROM loans WHERE status = 'active' AND start_date >= ${startDate} AND start_date <= ${endDate}) - 
+                    (SELECT COALESCE(SUM(c.amount_collected), 0) FROM collections c JOIN loans l ON c.loan_id = l.id WHERE l.status = 'active' AND l.start_date >= ${startDate} AND l.start_date <= ${endDate}) as pending
+            `;
         } else {
             collectionRows = await sql`SELECT COALESCE(SUM(amount_collected), 0) as total FROM collections`;
             profitRows = await sql`SELECT COALESCE(SUM(loan_amount - given_amount), 0) as profit FROM loans`;
@@ -28,23 +34,21 @@ export async function getDashboardStats(startDate?: string, endDate?: string) {
                 GROUP BY payment_date 
                 ORDER BY payment_date ASC
             `;
+            pendingRows = await sql`
+                SELECT 
+                    (SELECT COALESCE(SUM(loan_amount), 0) FROM loans WHERE status = 'active') - 
+                    (SELECT COALESCE(SUM(amount_collected), 0) FROM collections c JOIN loans l ON c.loan_id = l.id WHERE l.status = 'active') as pending
+            `;
         }
 
         const loanCountRows = await sql`SELECT COUNT(*) as count FROM loans WHERE status = 'active'`;
-        
-        // NEW CHARTS DATA
-        // 1. Status Distribution
         const statusRows = await sql`SELECT status, COUNT(*) as count FROM loans GROUP BY status`;
-        
-        // 2. Weekday Distribution
         const weekdayRows = await sql`
             SELECT TO_CHAR(payment_date, 'Day') as weekday, SUM(amount_collected) as amount 
             FROM collections 
             GROUP BY weekday 
             ORDER BY MIN(EXTRACT(DOW FROM payment_date))
         `;
-
-        // 3. Top 5 Borrowers
         const topBorrowers = await sql`
             SELECT c.name, SUM(l.loan_amount) as total 
             FROM loans l 
@@ -59,6 +63,7 @@ export async function getDashboardStats(startDate?: string, endDate?: string) {
             activeLoans: loanCountRows[0].count || 0,
             totalCollected: parseFloat(collectionRows[0].total).toFixed(2),
             totalProfit: parseFloat(profitRows[0].profit).toFixed(2),
+            totalPending: parseFloat(pendingRows[0].pending || "0").toFixed(2),
             trends: trendRows.map((r: any) => ({
                 date: r.date,
                 amount: parseFloat(r.amount)
@@ -82,6 +87,7 @@ export async function getDashboardStats(startDate?: string, endDate?: string) {
             activeLoans: 0, 
             totalCollected: "0.00", 
             totalProfit: "0.00", 
+            totalPending: "0.00",
             trends: [],
             statusDistribution: [],
             weekdayDistribution: [],

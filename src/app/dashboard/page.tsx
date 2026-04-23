@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Users, TrendingUp, DollarSign, Calendar, ArrowRight, Wallet, PieChart as PieIcon, BarChart3, TrendingDown } from "lucide-react";
+import { Users, TrendingUp, DollarSign, Calendar, ArrowRight, Wallet, PieChart as PieIcon, BarChart3, Clock } from "lucide-react";
 import { getDashboardStats } from "@/db/dashboard";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, AreaChart, Area } from "recharts";
 import Link from "next/link";
@@ -56,41 +56,53 @@ export default function Dashboard() {
             </div>
 
             {/* Main KPIs */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.5rem", marginBottom: "2.5rem" }}>
-                <div className="card" style={{ padding: "1.75rem", background: "linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(99, 102, 241, 0.05) 100%)", border: "1px solid rgba(99, 102, 241, 0.2)" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1.5rem" }}>
-                        <div style={{ width: "48px", height: "48px", borderRadius: "14px", background: "var(--primary)", color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            <DollarSign size={24} />
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "1.5rem", marginBottom: "2.5rem" }}>
+                <div className="card" style={{ padding: "1.5rem", background: "linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(99, 102, 241, 0.05) 100%)", border: "1px solid rgba(99, 102, 241, 0.2)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1.25rem" }}>
+                        <div style={{ width: "40px", height: "40px", borderRadius: "12px", background: "var(--primary)", color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <DollarSign size={20} />
                         </div>
-                        <TrendingUp size={20} style={{ color: "var(--success)" }} />
+                        <TrendingUp size={18} style={{ color: "var(--success)" }} />
                     </div>
-                    <p style={{ fontSize: "0.85rem", opacity: 0.5, fontWeight: 500 }}>Total Collected</p>
-                    <h2 style={{ fontSize: "2rem", fontWeight: 800, margin: "0.5rem 0" }}>₹{parseFloat(stats?.totalCollected).toLocaleString('en-IN')}</h2>
-                    <p style={{ fontSize: "0.75rem", color: "var(--success)", fontWeight: 600 }}>Period performance</p>
+                    <p style={{ fontSize: "0.8rem", opacity: 0.5, fontWeight: 500 }}>Total Collected</p>
+                    <h2 style={{ fontSize: "1.75rem", fontWeight: 800, margin: "0.4rem 0" }}>₹{parseFloat(stats?.totalCollected).toLocaleString('en-IN')}</h2>
+                    <p style={{ fontSize: "0.7rem", color: "var(--success)", fontWeight: 600 }}>Period performance</p>
                 </div>
 
-                <div className="card" style={{ padding: "1.75rem", background: "linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%)", border: "1px solid rgba(16, 185, 129, 0.2)" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1.5rem" }}>
-                        <div style={{ width: "48px", height: "48px", borderRadius: "14px", background: "var(--success)", color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            <TrendingUp size={24} />
+                <div className="card" style={{ padding: "1.5rem", background: "linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%)", border: "1px solid rgba(239, 68, 68, 0.2)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1.25rem" }}>
+                        <div style={{ width: "40px", height: "40px", borderRadius: "12px", background: "var(--error)", color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <Clock size={20} />
                         </div>
-                        <TrendingUp size={20} style={{ color: "var(--success)" }} />
+                        <span style={{ fontSize: "0.7rem", opacity: 0.4 }}>Outstanding</span>
                     </div>
-                    <p style={{ fontSize: "0.85rem", opacity: 0.5, fontWeight: 500 }}>Total Profit</p>
-                    <h2 style={{ fontSize: "2rem", fontWeight: 800, margin: "0.5rem 0" }}>₹{parseFloat(stats?.totalProfit).toLocaleString('en-IN')}</h2>
-                    <p style={{ fontSize: "0.75rem", color: "var(--success)", fontWeight: 600 }}>Expected interest yield</p>
+                    <p style={{ fontSize: "0.8rem", opacity: 0.5, fontWeight: 500 }}>Total Pending</p>
+                    <h2 style={{ fontSize: "1.75rem", fontWeight: 800, margin: "0.4rem 0" }}>₹{parseFloat(stats?.totalPending).toLocaleString('en-IN')}</h2>
+                    <p style={{ fontSize: "0.7rem", opacity: 0.4 }}>Balance to be collected</p>
                 </div>
 
-                <div className="card" style={{ padding: "1.75rem", background: "linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%)", border: "1px solid rgba(245, 158, 11, 0.2)" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1.5rem" }}>
-                        <div style={{ width: "48px", height: "48px", borderRadius: "14px", background: "#f59e0b", color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            <Users size={24} />
+                <div className="card" style={{ padding: "1.5rem", background: "linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%)", border: "1px solid rgba(16, 185, 129, 0.2)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1.25rem" }}>
+                        <div style={{ width: "40px", height: "40px", borderRadius: "12px", background: "var(--success)", color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <TrendingUp size={20} />
                         </div>
-                        <span style={{ fontSize: "0.85rem", opacity: 0.5 }}>Active</span>
+                        <TrendingUp size={18} style={{ color: "var(--success)" }} />
                     </div>
-                    <p style={{ fontSize: "0.85rem", opacity: 0.5, fontWeight: 500 }}>Active Loans</p>
-                    <h2 style={{ fontSize: "2rem", fontWeight: 800, margin: "0.5rem 0" }}>{stats?.activeLoans}</h2>
-                    <p style={{ fontSize: "0.75rem", opacity: 0.5 }}>Currently running accounts</p>
+                    <p style={{ fontSize: "0.8rem", opacity: 0.5, fontWeight: 500 }}>Total Profit</p>
+                    <h2 style={{ fontSize: "1.75rem", fontWeight: 800, margin: "0.4rem 0" }}>₹{parseFloat(stats?.totalProfit).toLocaleString('en-IN')}</h2>
+                    <p style={{ fontSize: "0.7rem", color: "var(--success)", fontWeight: 600 }}>Interest yield</p>
+                </div>
+
+                <div className="card" style={{ padding: "1.5rem", background: "linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%)", border: "1px solid rgba(245, 158, 11, 0.2)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1.25rem" }}>
+                        <div style={{ width: "40px", height: "40px", borderRadius: "12px", background: "#f59e0b", color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <Users size={20} />
+                        </div>
+                        <span style={{ fontSize: "0.7rem", opacity: 0.5 }}>Active</span>
+                    </div>
+                    <p style={{ fontSize: "0.8rem", opacity: 0.5, fontWeight: 500 }}>Active Loans</p>
+                    <h2 style={{ fontSize: "1.75rem", fontWeight: 800, margin: "0.4rem 0" }}>{stats?.activeLoans}</h2>
+                    <p style={{ fontSize: "0.7rem", opacity: 0.5 }}>Running accounts</p>
                 </div>
             </div>
 
