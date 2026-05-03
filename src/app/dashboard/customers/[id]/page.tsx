@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getCustomerDetails, closeLoan, createNewLoanForCustomer, updateCustomer, deleteCustomer } from "@/db/actions";
+import { getCustomerDetails, closeLoan, createNewLoanForCustomer, updateCustomer, deleteCustomer, deleteLoan } from "@/db/actions";
 import { format, eachDayOfInterval, isSameDay, addDays } from "date-fns";
 import { ArrowLeft, User, Phone, MapPin, Calendar, CreditCard, CheckCircle, XCircle, PlusCircle, Edit, Trash2 } from "lucide-react";
 
@@ -58,7 +58,7 @@ export default function CustomerDetailsPage() {
     if (activeLoan) {
         const createdAt = new Date(activeLoan.created_at);
         const diffDays = Math.ceil(Math.abs(new Date().getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
-        canEditLoanAmount = diffDays <= 2;
+        canEditLoanAmount = diffDays <= 4;
     }
 
     const loanAmount = activeLoan ? parseFloat(activeLoan.loan_amount) : 0;
@@ -77,7 +77,14 @@ export default function CustomerDetailsPage() {
                     <div style={{ display: "flex", gap: "0.5rem" }}>
                         <button className="btn" style={{ background: "var(--input)", color: "white" }} onClick={() => setIsEditOpen(true)}><Edit size={16} /> Edit</button>
                         <button className="btn" style={{ background: "rgba(239, 68, 68, 0.1)", color: "var(--error)" }} onClick={async () => {
-                            if (confirm("Delete this customer?")) { await deleteCustomer(Number(id)); router.push("/dashboard/customers"); }
+                            if (confirm("Delete this customer?")) { 
+                                try {
+                                    await deleteCustomer(Number(id)); 
+                                    router.push("/dashboard/customers"); 
+                                } catch (error: any) {
+                                    alert(error.message || "Failed to delete customer.");
+                                }
+                            }
                         }}><Trash2 size={16} /></button>
                     </div>
                 </div>
@@ -147,6 +154,21 @@ export default function CustomerDetailsPage() {
                                         fetchData();
                                     }
                                 }}><XCircle size={16} /> Close Loan</button>
+                                
+                                <button className="btn" style={{ width: "100%", background: "transparent", color: "var(--error)", border: "1px solid var(--error)", marginTop: "0.5rem" }} onClick={async () => {
+                                    if (!confirm("Are you sure you want to delete this loan? This will move it to the Archive.")) return;
+                                    const confirmText = prompt("Type 'DELETE' to confirm:");
+                                    if (confirmText !== "DELETE") { alert("Cancelled."); return; }
+                                    const pin = prompt("Enter Admin PIN:");
+                                    if (!pin) return;
+                                    try {
+                                        await deleteLoan(activeLoan.id, pin);
+                                        alert("Loan deleted successfully.");
+                                        fetchData();
+                                    } catch (e: any) {
+                                        alert(e.message || "Failed to delete loan.");
+                                    }
+                                }}><Trash2 size={16} /> Delete Loan</button>
                             </>
                         ) : (
                             <div style={{ textAlign: "center", padding: "1rem" }}>
@@ -312,7 +334,7 @@ export default function CustomerDetailsPage() {
                             <div><label>ID NUMBER</label><input type="text" className="input" value={editForm?.idNumber || ""} onChange={e => setEditForm({ ...editForm, idNumber: e.target.value })} placeholder="Optional" /></div>
                         </div>
                         <div className="responsive-grid cols-2">
-                            <div><label>LOAN AMOUNT (Limit: 2 days)</label><input type="number" className="input" disabled={!canEditLoanAmount} value={editForm?.loanAmount || ""} onChange={e => setEditForm({ ...editForm, loanAmount: e.target.value })} style={{ opacity: canEditLoanAmount ? 1 : 0.5 }} /></div>
+                            <div><label>LOAN AMOUNT (Limit: 4 days)</label><input type="number" className="input" disabled={!canEditLoanAmount} value={editForm?.loanAmount || ""} onChange={e => setEditForm({ ...editForm, loanAmount: e.target.value })} style={{ opacity: canEditLoanAmount ? 1 : 0.5 }} /></div>
                             <div><label>LOAN START DATE</label><input type="date" className="input" value={editForm?.startDate || ""} onChange={e => setEditForm({ ...editForm, startDate: e.target.value })} /></div>
                         </div>
                         <button type="submit" className="btn btn-primary" style={{ padding: "1rem" }} disabled={editing}>{editing ? "Saving..." : "Update ✓"}</button>

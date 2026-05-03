@@ -25,6 +25,8 @@ export const loans = pgTable("loans", {
     startDate: date("start_date").notNull(),
     endDate: date("end_date").notNull(),
     status: text("status", { enum: ["active", "closed"] }).default("active"),
+    isDeleted: boolean("is_deleted").default(false),
+    deletedAt: timestamp("deleted_at"),
     closedDate: timestamp("closed_date"),
     createdAt: timestamp("created_at").defaultNow(),
 });

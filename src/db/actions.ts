@@ -36,6 +36,10 @@ export async function createCustomer(data: any) {
         const existing = await sql`SELECT * FROM customers WHERE own_id = ${ownId}`;
         if (existing.length > 0) {
           if (existing[0].is_deleted) {
+            const activeLoans = await sql`SELECT * FROM loans WHERE customer_id = ${existing[0].id} AND status = 'active'`;
+            if (activeLoans.length > 0) {
+              throw new Error("This customer already has an active loan. Please close it first before creating a new one.");
+            }
             await restoreCustomer(existing[0].id);
             await updateCustomer(existing[0].id, data);
             const start = formStart ? new Date(formStart) : addDays(new Date(), 1);
@@ -63,7 +67,7 @@ export async function updateCustomer(id: number, data: any) {
   try {
     await sql`UPDATE customers SET own_id = ${ownId || null}, name = ${name}, address = ${address}, id_proof = ${idProof}, id_number = ${idNumber}, dob = ${dob}, mobile_no = ${mobile}, mobile_alt = ${mobileAlt || null} WHERE id = ${id}`;
     if (loanAmount || startDate) {
-        const loanRows = await sql`SELECT * FROM loans WHERE customer_id = ${id} AND status = 'active' ORDER BY created_at DESC LIMIT 1`;
+        const loanRows = await sql`SELECT * FROM loans WHERE customer_id = ${id} AND status = 'active' AND is_deleted = FALSE ORDER BY created_at DESC LIMIT 1`;
         const activeLoan = loanRows[0];
         if (activeLoan) {
           if (startDate) {
@@ -81,14 +85,20 @@ export async function updateCustomer(id: number, data: any) {
   } catch (e: any) { console.error("updateCustomer error:", e); }
 }
 
-export async function deleteCustomer(id: number) { return await sql`UPDATE customers SET is_deleted = TRUE, deleted_at = NOW() WHERE id = ${id}`; }
+export async function deleteCustomer(id: number) {
+  const activeLoans = await sql`SELECT * FROM loans WHERE customer_id = ${id} AND status = 'active'`;
+  if (activeLoans.length > 0) {
+      throw new Error("Cannot delete customer with an active loan. Please close the loan first.");
+  }
+  return await sql`UPDATE customers SET is_deleted = TRUE, deleted_at = NOW() WHERE id = ${id}`; 
+}
 export async function restoreCustomer(id: number) { return await sql`UPDATE customers SET is_deleted = FALSE, deleted_at = NULL WHERE id = ${id}`; }
 
 export async function getCustomerDetails(id: number) {
   try {
     const customerRows = await sql`SELECT * FROM customers WHERE id = ${id}`;
     const customer = customerRows[0];
-    const allLoans = await sql`SELECT * FROM loans WHERE customer_id = ${id} ORDER BY created_at DESC`;
+    const allLoans = await sql`SELECT * FROM loans WHERE customer_id = ${id} AND is_deleted = FALSE ORDER BY created_at DESC`;
     const activeLoan = allLoans.find((l: any) => l.status === 'active') || null;
     let allCollections: any[] = [];
     if (allLoans.length > 0) {
@@ -102,10 +112,10 @@ export async function getCustomerDetails(id: number) {
 
 export async function getCollectionStatus(dateStr: string, search?: string) {
   try {
-    const activeLoans = await sql`SELECT l.*, c.id as cust_id, c.name, c.own_id FROM loans l JOIN customers c ON l.customer_id = c.id WHERE l.status = 'active' AND c.is_deleted = FALSE`;
+    const activeLoans = await sql`SELECT l.*, c.id as cust_id, c.name, c.own_id FROM loans l JOIN customers c ON l.customer_id = c.id WHERE l.status = 'active' AND l.is_deleted = FALSE AND c.is_deleted = FALSE`;
     const dateCollections = await sql`SELECT * FROM collections WHERE payment_date = ${dateStr}`;
     const processedLoanIds = new Set(dateCollections.map((c: any) => c.loan_id));
-    const totalCollectionsRows = await sql`SELECT loan_id, SUM(amount_collected) as total FROM collections WHERE loan_id IN (SELECT id FROM loans WHERE status = 'active') GROUP BY loan_id`;
+    const totalCollectionsRows = await sql`SELECT loan_id, SUM(amount_collected) as total FROM collections WHERE loan_id IN (SELECT id FROM loans WHERE status = 'active' AND is_deleted = FALSE) GROUP BY loan_id`;
     const totalCollectedMap = new Map(totalCollectionsRows.map((r: any) => [r.loan_id, parseFloat(r.total)]));
     let result = activeLoans.filter((loan: any) => new Date(loan.start_date) <= new Date(dateStr)).map((loan: any) => ({
         loanId: loan.id, customerId: loan.customer_id, ownId: loan.own_id, name: loan.name, loanAmount: loan.loan_amount,
@@ -135,6 +145,32 @@ export async function createNewLoanForCustomer(customerId: number, loanAmount: s
   return await sql`INSERT INTO loans (customer_id, loan_amount, given_amount, interest_rate, start_date, end_date, status) VALUES (${customerId}, ${amount}, ${givenAmount}, 12.00, ${start.toISOString().split("T")[0]}, ${end.toISOString().split("T")[0]}, 'active')`;
 }
 
+// DELETED LOANS
+export async function getDeletedLoans() {
+  try { return await sql`SELECT l.*, c.name, c.own_id FROM loans l JOIN customers c ON l.customer_id = c.id WHERE l.is_deleted = TRUE ORDER BY l.deleted_at DESC`; }
+  catch (e) { console.error("getDeletedLoans error:", e); return []; }
+}
+
+export async function deleteLoan(loanId: number, pin: string) {
+  const validPin = process.env.ADMIN_DELETE_PIN || "1234";
+  if (pin !== validPin) throw new Error("Invalid Admin PIN");
+  return await sql`UPDATE loans SET is_deleted = TRUE, deleted_at = NOW() WHERE id = ${loanId}`;
+}
+
+export async function restoreLoan(loanId: number) {
+  const loan = await sql`SELECT * FROM loans WHERE id = ${loanId}`;
+  if (!loan[0]) throw new Error("Loan not found");
+  
+  const customerId = loan[0].customer_id;
+  const activeLoans = await sql`SELECT * FROM loans WHERE customer_id = ${customerId} AND status = 'active' AND is_deleted = FALSE`;
+  
+  if (activeLoans.length > 0) {
+    throw new Error("Cannot restore: This customer already has an active loan.");
+  }
+  
+  return await sql`UPDATE loans SET is_deleted = FALSE, deleted_at = NULL WHERE id = ${loanId}`;
+}
+
 // LEDGER
 export async function getLedgerEntries() {
   try { return await sql`SELECT * FROM ledger ORDER BY date DESC, created_at DESC LIMIT 50`; }
@@ -148,8 +184,8 @@ export async function addLedgerEntry(data: { amount: string, type: string, descr
 export async function updateLedgerEntry(id: number, data: { amount: string, type: string, description: string, date: string }) {
     const entry = await sql`SELECT createdAt FROM ledger WHERE id = ${id}`;
     if (!entry[0]) throw new Error("Entry not found");
-    const limitDate = addDays(new Date(entry[0].createdAt), 2);
-    if (new Date() > limitDate) throw new Error("Editing expired (48h limit reached)");
+    const limitDate = addDays(new Date(entry[0].createdAt), 4);
+    if (new Date() > limitDate) throw new Error("Editing expired (4-day limit reached)");
 
     return await sql`
         UPDATE ledger 
@@ -161,8 +197,8 @@ export async function updateLedgerEntry(id: number, data: { amount: string, type
 export async function deleteLedgerEntry(id: number) {
     const entry = await sql`SELECT createdAt FROM ledger WHERE id = ${id}`;
     if (!entry[0]) throw new Error("Entry not found");
-    const limitDate = addDays(new Date(entry[0].createdAt), 2);
-    if (new Date() > limitDate) throw new Error("Deletion expired (48h limit reached)");
+    const limitDate = addDays(new Date(entry[0].createdAt), 4);
+    if (new Date() > limitDate) throw new Error("Deletion expired (4-day limit reached)");
 
     return await sql`DELETE FROM ledger WHERE id = ${id}`;
 }

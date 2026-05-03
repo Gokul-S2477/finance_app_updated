@@ -10,7 +10,7 @@ export async function getDashboardStats(startDate?: string, endDate?: string) {
 
         if (startDate && endDate) {
             collectionRows = await sql`SELECT COALESCE(SUM(amount_collected), 0) as total FROM collections WHERE payment_date >= ${startDate} AND payment_date <= ${endDate}`;
-            profitRows = await sql`SELECT COALESCE(SUM(loan_amount - given_amount), 0) as profit FROM loans WHERE start_date >= ${startDate} AND start_date <= ${endDate}`;
+            profitRows = await sql`SELECT COALESCE(SUM(loan_amount - given_amount), 0) as profit FROM loans WHERE start_date >= ${startDate} AND start_date <= ${endDate} AND is_deleted = FALSE`;
             trendRows = await sql`
                 SELECT payment_date as date, SUM(amount_collected) as amount 
                 FROM collections 
@@ -20,12 +20,12 @@ export async function getDashboardStats(startDate?: string, endDate?: string) {
             `;
             pendingRows = await sql`
                 SELECT 
-                    (SELECT COALESCE(SUM(loan_amount), 0) FROM loans WHERE status = 'active' AND start_date >= ${startDate} AND start_date <= ${endDate}) - 
-                    (SELECT COALESCE(SUM(c.amount_collected), 0) FROM collections c JOIN loans l ON c.loan_id = l.id WHERE l.status = 'active' AND l.start_date >= ${startDate} AND l.start_date <= ${endDate}) as pending
+                    (SELECT COALESCE(SUM(loan_amount), 0) FROM loans WHERE status = 'active' AND start_date >= ${startDate} AND start_date <= ${endDate} AND is_deleted = FALSE) - 
+                    (SELECT COALESCE(SUM(c.amount_collected), 0) FROM collections c JOIN loans l ON c.loan_id = l.id WHERE l.status = 'active' AND l.start_date >= ${startDate} AND l.start_date <= ${endDate} AND l.is_deleted = FALSE) as pending
             `;
         } else {
             collectionRows = await sql`SELECT COALESCE(SUM(amount_collected), 0) as total FROM collections`;
-            profitRows = await sql`SELECT COALESCE(SUM(loan_amount - given_amount), 0) as profit FROM loans`;
+            profitRows = await sql`SELECT COALESCE(SUM(loan_amount - given_amount), 0) as profit FROM loans WHERE is_deleted = FALSE`;
             trendRows = await sql`
                 SELECT payment_date as date, SUM(amount_collected) as amount 
                 FROM collections 
@@ -35,13 +35,13 @@ export async function getDashboardStats(startDate?: string, endDate?: string) {
             `;
             pendingRows = await sql`
                 SELECT 
-                    (SELECT COALESCE(SUM(loan_amount), 0) FROM loans WHERE status = 'active') - 
-                    (SELECT COALESCE(SUM(amount_collected), 0) FROM collections c JOIN loans l ON c.loan_id = l.id WHERE l.status = 'active') as pending
+                    (SELECT COALESCE(SUM(loan_amount), 0) FROM loans WHERE status = 'active' AND is_deleted = FALSE) - 
+                    (SELECT COALESCE(SUM(amount_collected), 0) FROM collections c JOIN loans l ON c.loan_id = l.id WHERE l.status = 'active' AND l.is_deleted = FALSE) as pending
             `;
         }
 
-        const loanCountRows = await sql`SELECT COUNT(*) as count FROM loans WHERE status = 'active'`;
-        const statusRows = await sql`SELECT status, COUNT(*) as count FROM loans GROUP BY status`;
+        const loanCountRows = await sql`SELECT COUNT(*) as count FROM loans WHERE status = 'active' AND is_deleted = FALSE`;
+        const statusRows = await sql`SELECT status, COUNT(*) as count FROM loans WHERE is_deleted = FALSE GROUP BY status`;
         
         // 1. Ending Soon (Top 10)
         const endingSoon = await sql`
@@ -54,7 +54,7 @@ export async function getDashboardStats(startDate?: string, endDate?: string) {
                 COALESCE((SELECT SUM(amount_collected) FROM collections WHERE loan_id = l.id), 0) as collected
             FROM loans l
             JOIN customers c ON l.customer_id = c.id
-            WHERE l.status = 'active'
+            WHERE l.status = 'active' AND l.is_deleted = FALSE
             ORDER BY l.end_date ASC
             LIMIT 10
         `;
@@ -69,7 +69,7 @@ export async function getDashboardStats(startDate?: string, endDate?: string) {
             SELECT c.name, SUM(l.loan_amount) as total 
             FROM loans l 
             JOIN customers c ON l.customer_id = c.id 
-            WHERE l.status = 'active'
+            WHERE l.status = 'active' AND l.is_deleted = FALSE
             GROUP BY c.name 
             ORDER BY total DESC 
             LIMIT 5
